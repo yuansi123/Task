@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: '每日小確幸',
-        short_name: '小確幸',
-        description: '可愛的每日任務追蹤',
+        name: '每日任務',
+        short_name: '每日任務',
+        description: '可愛的每日任務追蹤與心情日記',
         theme_color: '#ff9ec7',
         background_color: '#fff0f5',
         display: 'standalone',
