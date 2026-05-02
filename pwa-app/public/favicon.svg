@@ -2,35 +2,35 @@
 <defs>
 <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
 <stop offset="0%" stop-color="#fff0f5"/>
-<stop offset="100%" stop-color="#ffe4e8"/>
+<stop offset="100%" stop-color="#ffe4ec"/>
 </linearGradient>
-<linearGradient id="check" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0%" stop-color="#7fd99a"/>
-<stop offset="100%" stop-color="#5fc080"/>
-</linearGradient>
+<radialGradient id="bowL" cx="35%" cy="35%">
+<stop offset="0%" stop-color="#ffafc7"/>
+<stop offset="100%" stop-color="#ff6b9d"/>
+</radialGradient>
+<radialGradient id="bowR" cx="65%" cy="35%">
+<stop offset="0%" stop-color="#ffafc7"/>
+<stop offset="100%" stop-color="#ff6b9d"/>
+</radialGradient>
 </defs>
 <rect width="100" height="100" rx="22" fill="url(#bg)"/>
-<!-- ears -->
-<circle cx="32" cy="38" r="10" fill="#d2a57d"/>
-<circle cx="32" cy="38" r="5.5" fill="#ffc8c8"/>
-<circle cx="68" cy="38" r="10" fill="#d2a57d"/>
-<circle cx="68" cy="38" r="5.5" fill="#ffc8c8"/>
-<!-- head -->
-<circle cx="50" cy="55" r="22" fill="#d2a57d"/>
-<!-- muzzle -->
-<ellipse cx="50" cy="62" rx="11" ry="8" fill="#fae6d2"/>
-<!-- eyes -->
-<circle cx="42" cy="52" r="2" fill="#28201a"/>
-<circle cx="58" cy="52" r="2" fill="#28201a"/>
-<!-- nose -->
-<ellipse cx="50" cy="58" rx="2" ry="1.5" fill="#3c2820"/>
-<!-- mouth -->
-<path d="M50 60 L50 63 M47 64 Q49 66 50 64 Q51 66 53 64" stroke="#503528" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-<!-- blush -->
-<ellipse cx="36" cy="60" rx="3" ry="2" fill="#ff96aa" opacity="0.5"/>
-<ellipse cx="64" cy="60" rx="3" ry="2" fill="#ff96aa" opacity="0.5"/>
-<!-- check badge -->
-<circle cx="74" cy="36" r="11" fill="white"/>
-<circle cx="74" cy="36" r="9" fill="url(#check)"/>
-<path d="M70 36 L73 39 L78 33" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<!-- Tails -->
+<path d="M44 56 L30 84 L36 84 L38 78 L42 80 L46 60 Z" fill="#ff6b9d"/>
+<path d="M56 56 L70 84 L64 84 L62 78 L58 80 L54 60 Z" fill="#ff6b9d"/>
+<!-- Left loop -->
+<ellipse cx="32" cy="48" rx="18" ry="16" fill="url(#bowL)"/>
+<ellipse cx="36" cy="48" rx="6" ry="8" fill="#dc5f91"/>
+<!-- Right loop -->
+<ellipse cx="68" cy="48" rx="18" ry="16" fill="url(#bowR)"/>
+<ellipse cx="64" cy="48" rx="6" ry="8" fill="#dc5f91"/>
+<!-- Center knot -->
+<rect x="44" y="40" width="12" height="18" rx="3" fill="#dc5f91"/>
+<rect x="46" y="42" width="4" height="14" rx="2" fill="#ff8ab8"/>
+<!-- Sparkles -->
+<g fill="white">
+<circle cx="15" cy="20" r="1.5"/>
+<circle cx="85" cy="22" r="1.2"/>
+<circle cx="14" cy="80" r="1.2"/>
+<circle cx="86" cy="78" r="1.5"/>
+</g>
 </svg>
