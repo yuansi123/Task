@@ -42,6 +42,25 @@ const BODY_OPTIONS = [
   { id: 'good', emoji: '✨', label: '狀態好', color: '#a3e0d0' },
 ];
 
+const FRUITS = [
+  { id: 'strawberry', emoji: '🍓', name: '草莓', weight: 35 },
+  { id: 'apple', emoji: '🍎', name: '蘋果', weight: 30 },
+  { id: 'grape', emoji: '🍇', name: '葡萄', weight: 20 },
+  { id: 'peach', emoji: '🍑', name: '水蜜桃', weight: 10 },
+  { id: 'cherry', emoji: '🍒', name: '櫻桃', weight: 5 },
+];
+
+// Level XP curve
+function xpForLevel(lv) {
+  if (lv <= 0) return 0;
+  if (lv <= 5) return 2 + (lv - 1);
+  if (lv <= 15) return 6 + (lv - 5);
+  if (lv <= 30) return 16 + (lv - 15);
+  if (lv <= 50) return 31 + (lv - 30) * 2;
+  if (lv <= 75) return 71 + (lv - 50) * 3;
+  return 146 + (lv - 75) * 5;
+}
+
 const PET_GREETINGS = [
   '嗨～今天過得好嗎？',
   '見到你最開心了 💕',
@@ -73,6 +92,31 @@ const PET_ENCOURAGEMENTS = [
   '謝謝你今天也來看我 💖',
 ];
 
+function pickFruit() {
+  const total = FRUITS.reduce((s, f) => s + f.weight, 0);
+  let r = Math.random() * total;
+  for (const f of FRUITS) {
+    r -= f.weight;
+    if (r <= 0) return f.id;
+  }
+  return FRUITS[0].id;
+}
+
+// Pet age in pet-years (1 human day = 3/365 pet years -> 1 year = 3 pet years)
+function getPetAgeYears(createdAt) {
+  if (!createdAt) return 0;
+  const ms = Date.now() - new Date(createdAt).getTime();
+  const humanYears = ms / (365.25 * 24 * 60 * 60 * 1000);
+  return humanYears * 3;
+}
+
+function getPetStage(ageYears) {
+  if (ageYears < 0.5) return { name: '寶寶', emoji: '🍼' };       // <2 months human
+  if (ageYears < 1.5) return { name: '幼年', emoji: '🌱' };       // 2-6 months
+  if (ageYears < 3) return { name: '少年', emoji: '✨' };          // 6-12 months
+  return { name: '成年', emoji: '🌸' };                            // 1+ year
+}
+
 export default function App() {
   const [view, setView] = useState('today');
   const [tasks, setTasks] = useState([]);
@@ -86,14 +130,22 @@ export default function App() {
   const [weeklyData, setWeeklyData] = useState(null);
   const [confettiKey, setConfettiKey] = useState(0);
 
+  // Pet state
   const [pet, setPet] = useState(null);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [petNameInput, setPetNameInput] = useState('');
-  const [petStats, setPetStats] = useState({ feed: 0, water: 0, date: '' });
   const [showPetMenu, setShowPetMenu] = useState(false);
+  const [showFruitPicker, setShowFruitPicker] = useState(false);
   const [petBubble, setPetBubble] = useState(null);
   const [petAnimKey, setPetAnimKey] = useState(0);
   const [petHearts, setPetHearts] = useState(0);
+  const [showFruitGain, setShowFruitGain] = useState(null); // { emoji, key }
+  const [showLevelUp, setShowLevelUp] = useState(null);
+
+  // Pet position for walking animation
+  const [petX, setPetX] = useState(50); // percentage 0-100
+  const [petDir, setPetDir] = useState(1); // 1 right, -1 left
+  const walkRef = useRef(null);
 
   const audioCtxRef = useRef(null);
 
@@ -104,25 +156,24 @@ export default function App() {
 
   const dateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+  // Load
   useEffect(() => {
-    const t = storage.get('tasks');
-    if (t) setTasks(t);
-    const h = storage.get('history');
-    if (h) setHistory(h);
-    const d = storage.get('diaries');
-    if (d) setDiaries(d);
+    const t = storage.get('tasks'); if (t) setTasks(t);
+    const h = storage.get('history'); if (h) setHistory(h);
+    const d = storage.get('diaries'); if (d) setDiaries(d);
     const p = storage.get('pet');
     if (p) {
-      setPet(p);
+      // migrate old pet structure
+      setPet({
+        name: p.name,
+        createdAt: p.createdAt,
+        level: p.level || 0,
+        xp: p.xp || 0,
+        fruits: p.fruits || { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
+        lastRewardDate: p.lastRewardDate || {},
+      });
     } else {
       setShowNamePrompt(true);
-    }
-    const ps = storage.get('petStats');
-    const today = todayKey();
-    if (ps && ps.date === today) {
-      setPetStats(ps);
-    } else {
-      setPetStats({ feed: 0, water: 0, date: today });
     }
     setLoading(false);
   }, []);
@@ -131,8 +182,33 @@ export default function App() {
   useEffect(() => { if (!loading) storage.set('history', history); }, [history, loading]);
   useEffect(() => { if (!loading) storage.set('diaries', diaries); }, [diaries, loading]);
   useEffect(() => { if (!loading && pet) storage.set('pet', pet); }, [pet, loading]);
-  useEffect(() => { if (!loading) storage.set('petStats', petStats); }, [petStats, loading]);
 
+  // Pet walking animation - move randomly within container
+  useEffect(() => {
+    if (!pet) return;
+    const tick = () => {
+      setPetX(x => {
+        // Random target every few seconds
+        const next = x + petDir * (1 + Math.random() * 1.5);
+        if (next > 80) { setPetDir(-1); return 80; }
+        if (next < 20) { setPetDir(1); return 20; }
+        return next;
+      });
+    };
+    walkRef.current = setInterval(tick, 80);
+    return () => clearInterval(walkRef.current);
+  }, [pet, petDir]);
+
+  // Random direction change occasionally
+  useEffect(() => {
+    if (!pet) return;
+    const i = setInterval(() => {
+      if (Math.random() < 0.3) setPetDir(d => -d);
+    }, 4000);
+    return () => clearInterval(i);
+  }, [pet]);
+
+  // Weekly summary
   useEffect(() => {
     if (loading) return;
     const checkWeekly = () => {
@@ -177,89 +253,64 @@ export default function App() {
     });
   };
 
+  // Sound helpers
+  const initAudio = () => {
+    if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtxRef.current;
+  };
   const playPopSound = () => {
     try {
-      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = audioCtxRef.current;
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(800, now);
-      osc1.frequency.exponentialRampToValueAtTime(400, now + 0.08);
-      gain1.gain.setValueAtTime(0.3, now);
-      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-      osc1.connect(gain1); gain1.connect(ctx.destination);
-      osc1.start(now); osc1.stop(now + 0.1);
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1000, now + 0.12);
-      osc2.frequency.exponentialRampToValueAtTime(500, now + 0.2);
-      gain2.gain.setValueAtTime(0.3, now + 0.12);
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-      osc2.connect(gain2); gain2.connect(ctx.destination);
-      osc2.start(now + 0.12); osc2.stop(now + 0.22);
-    } catch (e) {}
-  };
-
-  const playDingSound = () => {
-    try {
-      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = audioCtxRef.current;
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(1320, now);
-      gain1.gain.setValueAtTime(0.25, now);
-      gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-      osc1.connect(gain1); gain1.connect(ctx.destination);
-      osc1.start(now); osc1.stop(now + 0.25);
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(1056, now + 0.1);
-      gain2.gain.setValueAtTime(0.25, now + 0.1);
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-      osc2.connect(gain2); gain2.connect(ctx.destination);
-      osc2.start(now + 0.1); osc2.stop(now + 0.4);
-    } catch (e) {}
-  };
-
-  const playNomSound = () => {
-    try {
-      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = audioCtxRef.current;
-      const now = ctx.currentTime;
-      [0, 0.08, 0.16].forEach((delay, i) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(600 - i * 50, now + delay);
-        osc.frequency.exponentialRampToValueAtTime(300, now + delay + 0.06);
-        gain.gain.setValueAtTime(0.2, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now + delay); osc.stop(now + delay + 0.08);
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [{ f1: 800, f2: 400, t: 0 }, { f1: 1000, f2: 500, t: 0.12 }].forEach(({ f1, f2, t }) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f1, now + t); o.frequency.exponentialRampToValueAtTime(f2, now + t + 0.08);
+        g.gain.setValueAtTime(0.3, now + t); g.gain.exponentialRampToValueAtTime(0.01, now + t + 0.1);
+        o.connect(g); g.connect(ctx.destination); o.start(now + t); o.stop(now + t + 0.1);
       });
     } catch (e) {}
   };
-
-  const playWaterSound = () => {
+  const playDingSound = () => {
     try {
-      if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const ctx = audioCtxRef.current;
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(1500, now);
-      osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
-      gain.gain.setValueAtTime(0.3, now);
-      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(now); osc.stop(now + 0.2);
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [{ f: 1320, t: 0 }, { f: 1056, t: 0.1 }].forEach(({ f, t }) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f, now + t);
+        g.gain.setValueAtTime(0.25, now + t); g.gain.exponentialRampToValueAtTime(0.01, now + t + 0.3);
+        o.connect(g); g.connect(ctx.destination); o.start(now + t); o.stop(now + t + 0.3);
+      });
+    } catch (e) {}
+  };
+  const playNomSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [0, 0.08, 0.16].forEach((delay, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(600 - i * 50, now + delay); o.frequency.exponentialRampToValueAtTime(300, now + delay + 0.06);
+        g.gain.setValueAtTime(0.2, now + delay); g.gain.exponentialRampToValueAtTime(0.01, now + delay + 0.08);
+        o.connect(g); g.connect(ctx.destination); o.start(now + delay); o.stop(now + delay + 0.08);
+      });
+    } catch (e) {}
+  };
+  const playFruitGainSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [{ f: 880, t: 0 }, { f: 1320, t: 0.07 }, { f: 1760, t: 0.14 }].forEach(({ f, t }) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, now + t);
+        g.gain.setValueAtTime(0.2, now + t); g.gain.exponentialRampToValueAtTime(0.01, now + t + 0.12);
+        o.connect(g); g.connect(ctx.destination); o.start(now + t); o.stop(now + t + 0.12);
+      });
+    } catch (e) {}
+  };
+  const playLevelUpSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, now + i * 0.1);
+        g.gain.setValueAtTime(0.25, now + i * 0.1); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.4);
+        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.4);
+      });
     } catch (e) {}
   };
 
@@ -275,6 +326,20 @@ export default function App() {
     if (!wasChecked) {
       playPopSound();
       setConfettiKey(k => k + 1);
+      // Award fruit (only first time checking each task each day)
+      if (pet) {
+        const fruitId = pickFruit();
+        const fruit = FRUITS.find(f => f.id === fruitId);
+        setPet(p => ({
+          ...p,
+          fruits: { ...p.fruits, [fruitId]: (p.fruits[fruitId] || 0) + 1 }
+        }));
+        setTimeout(() => {
+          playFruitGainSound();
+          setShowFruitGain({ emoji: fruit.emoji, name: fruit.name, key: Date.now() });
+          setTimeout(() => setShowFruitGain(null), 2500);
+        }, 600);
+      }
     }
   };
 
@@ -286,101 +351,97 @@ export default function App() {
     setNewTaskName('');
   };
 
-  const deleteTask = (id) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-  };
+  const deleteTask = (id) => setTasks(prev => prev.filter(t => t.id !== id));
 
-  const getDiary = (key) => {
-    return diaries[key] || { moods: [], moodsCustom: [], body: [], bodyCustom: [], text: '' };
-  };
-
+  // Diary
+  const getDiary = (key) => diaries[key] || { moods: [], moodsCustom: [], body: [], bodyCustom: [], text: '' };
   const updateDiary = (key, updater) => {
     setDiaries(prev => {
       const current = prev[key] || { moods: [], moodsCustom: [], body: [], bodyCustom: [], text: '' };
       return { ...prev, [key]: updater(current) };
     });
   };
-
   const toggleMood = (moodId) => {
     const today = todayKey();
     const diary = getDiary(today);
     const wasSelected = diary.moods.includes(moodId);
-    updateDiary(today, d => ({
-      ...d,
-      moods: wasSelected ? d.moods.filter(m => m !== moodId) : [...d.moods, moodId]
-    }));
+    updateDiary(today, d => ({ ...d, moods: wasSelected ? d.moods.filter(m => m !== moodId) : [...d.moods, moodId] }));
     if (!wasSelected) playDingSound();
   };
-
   const toggleBody = (bodyId) => {
     const today = todayKey();
     const diary = getDiary(today);
     const wasSelected = diary.body.includes(bodyId);
-    updateDiary(today, d => ({
-      ...d,
-      body: wasSelected ? d.body.filter(b => b !== bodyId) : [...d.body, bodyId]
-    }));
+    updateDiary(today, d => ({ ...d, body: wasSelected ? d.body.filter(b => b !== bodyId) : [...d.body, bodyId] }));
     if (!wasSelected) playDingSound();
   };
 
+  // Pet logic
   const confirmPetName = () => {
     const name = petNameInput.trim() || '小幽';
-    setPet({ name, createdAt: new Date().toISOString() });
+    if (pet) {
+      // rename only
+      setPet(p => ({ ...p, name }));
+    } else {
+      setPet({
+        name,
+        createdAt: new Date().toISOString(),
+        level: 0,
+        xp: 0,
+        fruits: { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
+        lastRewardDate: {},
+      });
+    }
     setShowNamePrompt(false);
     setPetNameInput('');
-    showBubble(`嗨～我是 ${name}！很高興認識你 💗`, 'greet');
+    showBubble(`嗨～我是 ${name}！很高興認識你 💗`);
   };
 
-  const showBubble = (text, type = 'normal') => {
-    setPetBubble({ text, type });
+  const showBubble = (text) => {
+    setPetBubble({ text });
     setPetAnimKey(k => k + 1);
     setTimeout(() => setPetBubble(null), 4500);
   };
 
-  const feedPet = () => {
-    if (petStats.feed >= 5) {
-      showBubble('我吃飽飽了～謝謝你 🥰', 'full');
-      return;
-    }
-    const newFeed = Math.min(5, petStats.feed + 1);
-    setPetStats(s => ({ ...s, feed: newFeed }));
+  const feedFruit = (fruitId) => {
+    if (!pet || (pet.fruits[fruitId] || 0) <= 0) return;
+    const fruit = FRUITS.find(f => f.id === fruitId);
+    
+    setPet(p => {
+      const newFruits = { ...p.fruits, [fruitId]: p.fruits[fruitId] - 1 };
+      let newXp = p.xp + 1;
+      let newLevel = p.level;
+      let leveledUp = false;
+      // Check level ups (could be multiple if very low level)
+      while (newLevel < 100 && newXp >= xpForLevel(newLevel + 1)) {
+        newXp -= xpForLevel(newLevel + 1);
+        newLevel += 1;
+        leveledUp = true;
+      }
+      if (leveledUp) {
+        setTimeout(() => {
+          playLevelUpSound();
+          setShowLevelUp({ level: newLevel, key: Date.now() });
+          setTimeout(() => setShowLevelUp(null), 3000);
+        }, 400);
+      }
+      return { ...p, fruits: newFruits, xp: newXp, level: newLevel };
+    });
+    
     playNomSound();
     setPetAnimKey(k => k + 1);
     setPetHearts(h => h + 1);
     setTimeout(() => setPetHearts(h => Math.max(0, h - 1)), 2000);
-    if (newFeed === 5) {
-      showBubble('哇～吃得好飽！謝謝你照顧我 💕', 'full');
-    } else {
-      const msgs = ['好好吃喔～', '嗯～愛你 💗', '嚼嚼嚼...', '再來一口～', '好幸福 ✨'];
-      showBubble(msgs[Math.floor(Math.random() * msgs.length)], 'eat');
-    }
-    setShowPetMenu(false);
-  };
-
-  const giveWater = () => {
-    if (petStats.water >= 5) {
-      showBubble('我喝飽水水了～你也記得喝喔！💧', 'full');
-      return;
-    }
-    const newWater = Math.min(5, petStats.water + 1);
-    setPetStats(s => ({ ...s, water: newWater }));
-    playWaterSound();
-    setPetAnimKey(k => k + 1);
-    setPetHearts(h => h + 1);
-    setTimeout(() => setPetHearts(h => Math.max(0, h - 1)), 2000);
-    if (newWater === 5) {
-      showBubble('水水滿滿～你也要記得補水喔！💦', 'full');
-    } else {
-      const msgs = ['咕嚕咕嚕～', '好涼快～', '水水最棒了！', '謝謝你 💧', '舒服～'];
-      showBubble(msgs[Math.floor(Math.random() * msgs.length)], 'drink');
-    }
+    
+    const eatMsgs = ['好好吃喔～', `${fruit.name}最棒了！`, '嚼嚼嚼...', '謝謝你 💗', '好幸福 ✨'];
+    showBubble(eatMsgs[Math.floor(Math.random() * eatMsgs.length)]);
+    setShowFruitPicker(false);
     setShowPetMenu(false);
   };
 
   const chatWithPet = () => {
     const all = [...PET_GREETINGS, ...PET_ENCOURAGEMENTS, ...PET_ENCOURAGEMENTS];
-    const msg = all[Math.floor(Math.random() * all.length)];
-    showBubble(msg, 'chat');
+    showBubble(all[Math.floor(Math.random() * all.length)]);
     playDingSound();
     setShowPetMenu(false);
   };
@@ -403,15 +464,15 @@ export default function App() {
       <div style={{
         minHeight: '100vh',
         background: 'linear-gradient(135deg, #ffd1dc 0%, #ffe4e1 50%, #e0bbe4 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: '"Quicksand", -apple-system, sans-serif'
       }}>
         <div style={{ fontSize: '3rem', animation: 'bounce 1s infinite' }}>👻</div>
       </div>
     );
   }
+
+  const totalFruits = pet ? Object.values(pet.fruits).reduce((s, v) => s + v, 0) : 0;
 
   return (
     <div style={{
@@ -432,18 +493,13 @@ export default function App() {
         @keyframes confetti { 0%{transform:translateY(0) rotate(0); opacity:1} 100%{transform:translateY(-300px) rotate(720deg); opacity:0} }
         @keyframes wiggle { 0%,100%{transform:rotate(-3deg)} 50%{transform:rotate(3deg)} }
         @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        @keyframes petFloat { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-8px) scale(1.02)} }
-        @keyframes petBounce {
-          0%{transform:scale(1)} 25%{transform:scale(1.15) translateY(-12px)}
-          50%{transform:scale(0.95) translateY(0)} 75%{transform:scale(1.05) translateY(-4px)}
-          100%{transform:scale(1) translateY(0)}
-        }
-        @keyframes heartFloat {
-          0%{opacity:1; transform:translateY(0) scale(0.5)}
-          50%{opacity:1; transform:translateY(-30px) scale(1.2)}
-          100%{opacity:0; transform:translateY(-60px) scale(0.8)}
-        }
-        @keyframes bubbleIn { 0%{opacity:0; transform:translateY(10px) scale(0.8)} 100%{opacity:1; transform:translateY(0) scale(1)} }
+        @keyframes petWalk { 0%,100%{transform:translateY(0) scaleY(1)} 25%{transform:translateY(-3px) scaleY(0.98)} 75%{transform:translateY(-2px) scaleY(1.02)} }
+        @keyframes petBounce { 0%{transform:scale(1)} 25%{transform:scale(1.15) translateY(-12px)} 50%{transform:scale(0.95) translateY(0)} 75%{transform:scale(1.05) translateY(-4px)} 100%{transform:scale(1) translateY(0)} }
+        @keyframes heartFloat { 0%{opacity:1; transform:translateY(0) scale(0.5)} 50%{opacity:1; transform:translateY(-30px) scale(1.2)} 100%{opacity:0; transform:translateY(-60px) scale(0.8)} }
+        @keyframes bubbleIn { 0%{opacity:0; transform:translate(-50%,10px) scale(0.8)} 100%{opacity:1; transform:translate(-50%,0) scale(1)} }
+        @keyframes fruitGain { 0%{opacity:0; transform:translateY(20px) scale(0.5)} 20%{opacity:1; transform:translateY(0) scale(1.2)} 80%{opacity:1; transform:translateY(-10px) scale(1)} 100%{opacity:0; transform:translateY(-40px) scale(0.9)} }
+        @keyframes levelUpRing { 0%{transform:translate(-50%,-50%) scale(0); opacity:1} 100%{transform:translate(-50%,-50%) scale(3); opacity:0} }
+        @keyframes levelUpText { 0%{opacity:0; transform:translate(-50%,-50%) scale(0.5)} 30%{opacity:1; transform:translate(-50%,-50%) scale(1.2)} 70%{opacity:1; transform:translate(-50%,-50%) scale(1)} 100%{opacity:0; transform:translate(-50%,-100%) scale(0.9)} }
         .candy-btn { transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
         .candy-btn:active { transform: scale(0.95); }
         .task-card { transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
@@ -463,13 +519,72 @@ export default function App() {
         <div key={confettiKey} style={{ position: 'fixed', top: '50%', left: '50%', pointerEvents: 'none', zIndex: 100 }}>
           {['🌸', '⭐', '💖', '🍭', '✨', '🎀', '🌈', '💫'].map((e, i) => (
             <div key={i} style={{
-              position: 'absolute',
-              fontSize: '1.5rem',
+              position: 'absolute', fontSize: '1.5rem',
               left: `${(i - 4) * 30}px`,
               animation: `confetti 1.2s ease-out forwards`,
               animationDelay: `${i * 0.05}s`
             }}>{e}</div>
           ))}
+        </div>
+      )}
+
+      {/* Fruit gain notification */}
+      {showFruitGain && (
+        <div key={showFruitGain.key} style={{
+          position: 'fixed',
+          top: '120px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'linear-gradient(135deg, #fff4e6, #ffe0f0)',
+          border: '2px solid #ffb3d9',
+          borderRadius: '20px',
+          padding: '12px 20px',
+          fontWeight: 700,
+          color: '#a04060',
+          fontSize: '0.95rem',
+          zIndex: 150,
+          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.4)',
+          animation: 'fruitGain 2.5s ease-out forwards',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '1.6rem' }}>{showFruitGain.emoji}</span>
+          獲得 {showFruitGain.name} +1！
+        </div>
+      )}
+
+      {/* Level up overlay */}
+      {showLevelUp && (
+        <div key={showLevelUp.key} style={{
+          position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 180,
+        }}>
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            width: '200px', height: '200px', borderRadius: '50%',
+            border: '4px solid #ff6b9d',
+            animation: 'levelUpRing 1s ease-out forwards'
+          }} />
+          <div style={{
+            position: 'absolute', top: '50%', left: '50%',
+            background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
+            padding: '20px 32px',
+            borderRadius: '24px',
+            border: '3px solid white',
+            boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
+            textAlign: 'center',
+            animation: 'levelUpText 3s ease-out forwards'
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: '4px' }}>🎉✨</div>
+            <div style={{
+              fontFamily: '"Fredoka", sans-serif',
+              fontSize: '1.3rem',
+              fontWeight: 700,
+              background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>升級到 LV {showLevelUp.level}！</div>
+          </div>
         </div>
       )}
 
@@ -485,7 +600,7 @@ export default function App() {
           fontWeight: 700,
           letterSpacing: '-0.02em'
         }}>
-          🐻 每日任務
+          🎀 每日任務
         </h1>
         <p style={{ margin: '4px 0 0', color: '#a06b8a', fontSize: '0.85rem', fontWeight: 500 }}>
           {new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })}
@@ -523,16 +638,19 @@ export default function App() {
             {pet && (
               <PetSection
                 pet={pet}
-                petStats={petStats}
+                petX={petX}
+                petDir={petDir}
                 showPetMenu={showPetMenu}
                 setShowPetMenu={setShowPetMenu}
+                showFruitPicker={showFruitPicker}
+                setShowFruitPicker={setShowFruitPicker}
                 petBubble={petBubble}
                 petAnimKey={petAnimKey}
                 petHearts={petHearts}
-                feedPet={feedPet}
-                giveWater={giveWater}
+                feedFruit={feedFruit}
                 chatWithPet={chatWithPet}
                 renamePet={renamePet}
+                totalFruits={totalFruits}
               />
             )}
           </>
@@ -574,16 +692,12 @@ export default function App() {
       </div>
 
       <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        position: 'fixed', bottom: 0, left: 0, right: 0,
         background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(20px)',
         borderTop: '2px solid rgba(255, 209, 220, 0.5)',
         padding: '8px 8px calc(16px + env(safe-area-inset-bottom))',
-        display: 'flex',
-        justifyContent: 'space-around',
+        display: 'flex', justifyContent: 'space-around',
         zIndex: 50
       }}>
         {[
@@ -602,13 +716,8 @@ export default function App() {
               color: view === item.id ? 'white' : '#a06b8a',
               padding: '8px 12px',
               borderRadius: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '2px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.72rem',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+              cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem',
               boxShadow: view === item.id ? '0 4px 12px rgba(255, 158, 199, 0.4)' : 'none'
             }}
           >
@@ -618,6 +727,7 @@ export default function App() {
         ))}
       </div>
 
+      {/* Pet name prompt */}
       {showNamePrompt && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -636,22 +746,12 @@ export default function App() {
             textAlign: 'center'
           }}>
             <div style={{ marginBottom: '16px' }}>
-              <PetSVG size={100} animKey={0} />
+              <PetSVG size={100} animKey={0} ageYears={0} />
             </div>
-            <h2 style={{
-              margin: '0 0 8px',
-              fontFamily: '"Fredoka", sans-serif',
-              color: '#7a4a6b',
-              fontSize: '1.3rem'
-            }}>
+            <h2 style={{ margin: '0 0 8px', fontFamily: '"Fredoka", sans-serif', color: '#7a4a6b', fontSize: '1.3rem' }}>
               {pet ? '幫我換個名字～' : '你好呀！'}
             </h2>
-            <p style={{
-              margin: '0 0 20px',
-              color: '#a06b8a',
-              fontSize: '0.92rem',
-              whiteSpace: 'pre-line'
-            }}>
+            <p style={{ margin: '0 0 20px', color: '#a06b8a', fontSize: '0.92rem', whiteSpace: 'pre-line' }}>
               {pet ? '你想叫我什麼呢？' : '我是一隻軟軟的小幽靈～\n你想叫我什麼名字呢？'}
             </p>
             <input
@@ -663,16 +763,10 @@ export default function App() {
               maxLength={10}
               autoFocus
               style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: '16px',
-                border: '2px solid #ffd1dc',
-                background: 'white',
-                fontSize: '1rem',
-                fontFamily: 'inherit',
-                color: '#5a3a4a',
-                textAlign: 'center',
-                marginBottom: '16px'
+                width: '100%', padding: '12px 16px', borderRadius: '16px',
+                border: '2px solid #ffd1dc', background: 'white',
+                fontSize: '1rem', fontFamily: 'inherit', color: '#5a3a4a',
+                textAlign: 'center', marginBottom: '16px'
               }}
             />
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -680,33 +774,20 @@ export default function App() {
                 <button
                   onClick={() => { setShowNamePrompt(false); setPetNameInput(''); }}
                   style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '16px',
-                    border: 'none',
-                    background: 'rgba(255, 209, 220, 0.4)',
-                    color: '#a06b8a',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    fontSize: '0.95rem'
+                    flex: 1, padding: '12px', borderRadius: '16px', border: 'none',
+                    background: 'rgba(255, 209, 220, 0.4)', color: '#a06b8a',
+                    fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.95rem'
                   }}
                 >取消</button>
               )}
               <button
                 onClick={confirmPetName}
                 style={{
-                  flex: 2,
-                  padding: '12px',
-                  borderRadius: '16px',
-                  border: 'none',
+                  flex: 2, padding: '12px', borderRadius: '16px', border: 'none',
                   background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
-                  color: 'white',
-                  fontWeight: 700,
-                  cursor: 'pointer',
+                  color: 'white', fontWeight: 700, cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)',
-                  fontFamily: 'inherit',
-                  fontSize: '0.95rem'
+                  fontFamily: 'inherit', fontSize: '0.95rem'
                 }}
               >{pet ? '改好了！' : '就叫這個！'}</button>
             </div>
@@ -714,6 +795,7 @@ export default function App() {
         </div>
       )}
 
+      {/* Weekly summary */}
       {showWeeklySummary && weeklyData && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -735,12 +817,9 @@ export default function App() {
               onClick={() => setShowWeeklySummary(false)}
               style={{
                 position: 'absolute', top: '14px', right: '14px',
-                background: 'rgba(255, 255, 255, 0.7)',
-                border: 'none',
-                width: '32px', height: '32px',
-                borderRadius: '50%',
-                cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                background: 'rgba(255, 255, 255, 0.7)', border: 'none',
+                width: '32px', height: '32px', borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
             >
               <X size={18} color="#a06b8a" />
@@ -748,19 +827,16 @@ export default function App() {
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <Trophy size={36} color="#ff9ec7" style={{ marginBottom: '4px' }} />
               <h2 style={{
-                margin: 0,
-                fontFamily: '"Fredoka", sans-serif',
+                margin: 0, fontFamily: '"Fredoka", sans-serif',
                 background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent'
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
               }}>這週的總結 ✨</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {weeklyData.map((s, i) => (
                 <div key={i} style={{
                   display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 14px',
-                  background: 'rgba(255, 255, 255, 0.8)',
+                  padding: '12px 14px', background: 'rgba(255, 255, 255, 0.8)',
                   borderRadius: '16px'
                 }}>
                   <span style={{ fontSize: '1.4rem' }}>{s.emoji}</span>
@@ -781,18 +857,25 @@ export default function App() {
   );
 }
 
-function PetSVG({ size = 120, animKey = 0 }) {
+// Pet SVG - size scales with stage
+function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
+  // baby is smaller, grows over time, capped at adult
+  const stage = getPetStage(ageYears);
+  const sizeMultiplier = ageYears < 0.5 ? 0.7 : ageYears < 1.5 ? 0.85 : ageYears < 3 ? 0.95 : 1;
+  const finalSize = size * sizeMultiplier;
+  
   return (
     <div
       key={animKey}
       style={{
-        width: size,
-        height: size,
-        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petFloat 3s ease-in-out infinite',
-        display: 'inline-block'
+        width: finalSize, height: finalSize,
+        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 0.6s ease-in-out infinite',
+        display: 'inline-block',
+        transform: `scaleX(${facing})`,
+        transition: 'transform 0.3s'
       }}
     >
-      <svg viewBox="0 0 120 120" width={size} height={size}>
+      <svg viewBox="0 0 120 120" width={finalSize} height={finalSize}>
         <defs>
           <radialGradient id="petBody" cx="40%" cy="35%">
             <stop offset="0%" stopColor="#ffe0eb" />
@@ -833,203 +916,246 @@ function PetSVG({ size = 120, animKey = 0 }) {
   );
 }
 
-function PetSection({ pet, petStats, showPetMenu, setShowPetMenu, petBubble, petAnimKey, petHearts, feedPet, giveWater, chatWithPet, renamePet }) {
-  const feedPct = (petStats.feed / 5) * 100;
-  const waterPct = (petStats.water / 5) * 100;
-
+function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits }) {
+  const ageYears = getPetAgeYears(pet.createdAt);
+  const stage = getPetStage(ageYears);
+  const ageDisplay = ageYears < 1 ? `${Math.floor(ageYears * 12)}個月` : `${ageYears.toFixed(1)} 歲`;
+  
+  const xpNeeded = pet.level >= 100 ? 0 : xpForLevel(pet.level + 1);
+  const xpPct = pet.level >= 100 ? 100 : (pet.xp / xpNeeded) * 100;
+  
   return (
     <div style={{ padding: '24px 20px 0', position: 'relative' }}>
       <div style={{
         background: 'linear-gradient(135deg, rgba(255, 240, 245, 0.9), rgba(252, 228, 255, 0.85))',
         backdropFilter: 'blur(10px)',
         borderRadius: '28px',
-        padding: '20px 16px 24px',
+        padding: '16px 16px 20px',
         border: '2px solid rgba(255, 255, 255, 0.9)',
         boxShadow: '0 8px 24px rgba(255, 158, 199, 0.2)',
-        textAlign: 'center',
         position: 'relative'
       }}>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', justifyContent: 'center' }}>
-          <div style={{ flex: 1, maxWidth: '140px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#a06b8a' }}>
-              <span>🍓 飽飽</span>
-              <span>{petStats.feed}/5</span>
-            </div>
-            <div style={{ height: '8px', background: 'rgba(255, 209, 220, 0.4)', borderRadius: '999px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${feedPct}%`,
-                background: 'linear-gradient(90deg, #ff9ec7, #ff6b9d)',
-                borderRadius: '999px',
-                transition: 'width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-              }} />
-            </div>
+        {/* Stats header */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: '10px', padding: '0 4px'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '1rem', fontFamily: '"Fredoka", sans-serif' }}>
+              {pet.name}
+            </span>
+            <span style={{ fontSize: '0.7rem', color: '#a06b8a' }}>
+              {stage.emoji} {stage.name} · {ageDisplay}
+            </span>
           </div>
-          <div style={{ flex: 1, maxWidth: '140px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#a06b8a' }}>
-              <span>💧 水水</span>
-              <span>{petStats.water}/5</span>
-            </div>
-            <div style={{ height: '8px', background: 'rgba(196, 224, 255, 0.4)', borderRadius: '999px', overflow: 'hidden' }}>
-              <div style={{
-                height: '100%',
-                width: `${waterPct}%`,
-                background: 'linear-gradient(90deg, #a3c9ff, #6bb5ff)',
-                borderRadius: '999px',
-                transition: 'width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-              }} />
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              fontWeight: 700, fontSize: '1.1rem',
+              fontFamily: '"Fredoka", sans-serif',
+              background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+            }}>LV {pet.level}</div>
+            <div style={{ fontSize: '0.7rem', color: '#a06b8a' }}>
+              🍓 {totalFruits} 顆水果
             </div>
           </div>
         </div>
 
-        {petBubble && (
+        {/* XP bar */}
+        <div style={{ marginBottom: '12px', padding: '0 4px' }}>
           <div style={{
-            position: 'absolute',
-            top: '70px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'white',
-            padding: '10px 16px',
-            borderRadius: '20px',
-            border: '2px solid #ffd1dc',
-            boxShadow: '0 4px 16px rgba(255, 158, 199, 0.3)',
-            fontSize: '0.88rem',
-            fontWeight: 600,
-            color: '#5a3a4a',
-            maxWidth: '85%',
-            zIndex: 10,
-            animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            display: 'flex', justifyContent: 'space-between',
+            fontSize: '0.7rem', color: '#a06b8a', marginBottom: '3px', fontWeight: 600
           }}>
-            {petBubble.text}
+            <span>經驗值</span>
+            <span>{pet.level >= 100 ? 'MAX' : `${pet.xp}/${xpNeeded}`}</span>
+          </div>
+          <div style={{ height: '10px', background: 'rgba(255, 209, 220, 0.4)', borderRadius: '999px', overflow: 'hidden' }}>
             <div style={{
-              position: 'absolute',
-              bottom: '-8px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 0,
-              height: 0,
-              borderLeft: '8px solid transparent',
-              borderRight: '8px solid transparent',
-              borderTop: '8px solid white'
+              height: '100%',
+              width: `${xpPct}%`,
+              background: 'linear-gradient(90deg, #ff9ec7, #ffb3d9, #c4a3ff)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 3s linear infinite',
+              borderRadius: '999px',
+              transition: 'width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
             }} />
           </div>
-        )}
+        </div>
 
-        {petHearts > 0 && (
-          <div style={{
-            position: 'absolute',
-            top: '90px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            pointerEvents: 'none',
-            zIndex: 5
-          }}>
-            {[...Array(petHearts)].map((_, i) => (
-              <div key={`${petHearts}-${i}`} style={{
-                position: 'absolute',
-                fontSize: '1.5rem',
-                left: `${(i - petHearts / 2) * 20}px`,
-                animation: 'heartFloat 2s ease-out forwards',
-                animationDelay: `${i * 0.1}s`
-              }}>💗</div>
-            ))}
-          </div>
-        )}
-
-        <button
-          onClick={() => setShowPetMenu(s => !s)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-            marginTop: petBubble ? '50px' : '20px',
-            transition: 'margin 0.3s'
-          }}
-        >
-          <PetSVG size={120} animKey={petAnimKey} />
-        </button>
-
+        {/* Pet play area */}
         <div style={{
-          marginTop: '8px',
-          fontSize: '1rem',
-          fontWeight: 700,
-          color: '#7a4a6b',
-          fontFamily: '"Fredoka", sans-serif'
+          position: 'relative',
+          height: '160px',
+          background: 'linear-gradient(180deg, rgba(255, 240, 245, 0.5), rgba(255, 230, 245, 0.7))',
+          borderRadius: '20px',
+          border: '2px dashed rgba(255, 158, 199, 0.4)',
+          overflow: 'hidden'
         }}>
-          {pet.name} <button onClick={renamePet} style={{
+          {/* Floor decorations */}
+          <div style={{ position: 'absolute', bottom: '8px', left: '12%', fontSize: '0.9rem', opacity: 0.5 }}>🌸</div>
+          <div style={{ position: 'absolute', bottom: '12px', right: '15%', fontSize: '0.8rem', opacity: 0.5 }}>🌷</div>
+          <div style={{ position: 'absolute', top: '8px', left: '20%', fontSize: '0.7rem', opacity: 0.4 }}>✨</div>
+          <div style={{ position: 'absolute', top: '12px', right: '25%', fontSize: '0.8rem', opacity: 0.4 }}>☁️</div>
+
+          {petBubble && (
+            <div style={{
+              position: 'absolute',
+              top: '8px',
+              left: `${petX}%`,
+              transform: 'translateX(-50%)',
+              background: 'white',
+              padding: '6px 12px',
+              borderRadius: '14px',
+              border: '2px solid #ffd1dc',
+              boxShadow: '0 4px 12px rgba(255, 158, 199, 0.3)',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              color: '#5a3a4a',
+              whiteSpace: 'nowrap',
+              maxWidth: '180px',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              zIndex: 10,
+              animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+            }}>{petBubble.text}</div>
+          )}
+
+          {petHearts > 0 && (
+            <div style={{
+              position: 'absolute',
+              bottom: '60px',
+              left: `${petX}%`,
+              transform: 'translateX(-50%)',
+              pointerEvents: 'none', zIndex: 5
+            }}>
+              {[...Array(petHearts)].map((_, i) => (
+                <div key={`${petHearts}-${i}`} style={{
+                  position: 'absolute',
+                  fontSize: '1.2rem',
+                  left: `${(i - petHearts / 2) * 16}px`,
+                  animation: 'heartFloat 2s ease-out forwards',
+                  animationDelay: `${i * 0.1}s`
+                }}>💗</div>
+              ))}
+            </div>
+          )}
+
+          {/* Pet itself - clickable & walking */}
+          <button
+            onClick={() => setShowPetMenu(s => !s)}
+            style={{
+              position: 'absolute',
+              bottom: '8px',
+              left: `${petX}%`,
+              transform: 'translateX(-50%)',
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', padding: 0,
+              transition: 'left 0.4s linear'
+            }}
+          >
+            <PetSVG size={90} animKey={petAnimKey} ageYears={getPetAgeYears(pet.createdAt)} facing={petDir} />
+          </button>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: '#a06b8a' }}>
+          點 {pet.name} 互動 💕 <button onClick={renamePet} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: '0.7rem', color: '#c089a3', marginLeft: '4px',
-            fontFamily: 'inherit'
+            fontSize: '0.7rem', color: '#c089a3', fontFamily: 'inherit'
           }}>(改名)</button>
         </div>
-        <div style={{ fontSize: '0.75rem', color: '#a06b8a', marginTop: '2px' }}>
-          點我互動 💕
-        </div>
 
-        {showPetMenu && (
+        {showPetMenu && !showFruitPicker && (
           <div style={{
-            display: 'flex',
-            gap: '8px',
-            justifyContent: 'center',
-            marginTop: '14px',
-            flexWrap: 'wrap',
+            display: 'flex', gap: '8px', justifyContent: 'center',
+            marginTop: '12px', flexWrap: 'wrap',
             animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
           }}>
             <button
-              onClick={feedPet}
+              onClick={() => setShowFruitPicker(true)}
               className="candy-btn"
+              disabled={totalFruits === 0}
               style={{
-                padding: '10px 18px',
-                borderRadius: '999px',
-                border: 'none',
-                background: petStats.feed >= 5 ? 'rgba(255, 209, 220, 0.5)' : 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
-                color: petStats.feed >= 5 ? '#a06b8a' : 'white',
-                fontWeight: 700,
-                cursor: 'pointer',
+                padding: '10px 18px', borderRadius: '999px', border: 'none',
+                background: totalFruits === 0 ? 'rgba(255, 209, 220, 0.5)' : 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
+                color: totalFruits === 0 ? '#a06b8a' : 'white',
+                fontWeight: 700, cursor: totalFruits === 0 ? 'default' : 'pointer',
                 fontSize: '0.85rem',
-                boxShadow: petStats.feed >= 5 ? 'none' : '0 4px 12px rgba(255, 158, 199, 0.4)',
+                boxShadow: totalFruits === 0 ? 'none' : '0 4px 12px rgba(255, 158, 199, 0.4)',
                 fontFamily: 'inherit'
               }}
-            >
-              🍓 餵食
-            </button>
-            <button
-              onClick={giveWater}
-              className="candy-btn"
-              style={{
-                padding: '10px 18px',
-                borderRadius: '999px',
-                border: 'none',
-                background: petStats.water >= 5 ? 'rgba(196, 224, 255, 0.5)' : 'linear-gradient(135deg, #a3c9ff, #6bb5ff)',
-                color: petStats.water >= 5 ? '#6b8ba6' : 'white',
-                fontWeight: 700,
-                cursor: 'pointer',
-                fontSize: '0.85rem',
-                boxShadow: petStats.water >= 5 ? 'none' : '0 4px 12px rgba(107, 181, 255, 0.4)',
-                fontFamily: 'inherit'
-              }}
-            >
-              💧 喝水
-            </button>
+            >🍓 餵食 ({totalFruits})</button>
             <button
               onClick={chatWithPet}
               className="candy-btn"
               style={{
-                padding: '10px 18px',
-                borderRadius: '999px',
-                border: 'none',
+                padding: '10px 18px', borderRadius: '999px', border: 'none',
                 background: 'linear-gradient(135deg, #d4b3ff, #c4a3ff)',
-                color: 'white',
-                fontWeight: 700,
-                cursor: 'pointer',
+                color: 'white', fontWeight: 700, cursor: 'pointer',
                 fontSize: '0.85rem',
                 boxShadow: '0 4px 12px rgba(196, 163, 255, 0.4)',
                 fontFamily: 'inherit'
               }}
-            >
-              💬 聊天
-            </button>
+            >💬 聊天</button>
+          </div>
+        )}
+
+        {/* Fruit picker */}
+        {showFruitPicker && (
+          <div style={{
+            marginTop: '12px',
+            padding: '14px',
+            background: 'rgba(255, 255, 255, 0.7)',
+            borderRadius: '18px',
+            animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+          }}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              marginBottom: '10px'
+            }}>
+              <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '0.9rem' }}>
+                選一顆水果餵 {pet.name}
+              </span>
+              <button
+                onClick={() => setShowFruitPicker(false)}
+                style={{
+                  background: 'rgba(255, 209, 220, 0.4)',
+                  border: 'none', width: '24px', height: '24px',
+                  borderRadius: '50%', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              ><X size={14} color="#a06b8a" /></button>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+              {FRUITS.map(f => {
+                const count = pet.fruits[f.id] || 0;
+                const disabled = count === 0;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => !disabled && feedFruit(f.id)}
+                    disabled={disabled}
+                    className="candy-btn"
+                    style={{
+                      padding: '8px 14px', borderRadius: '14px', border: '2px solid',
+                      borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
+                      background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
+                      cursor: disabled ? 'default' : 'pointer',
+                      opacity: disabled ? 0.4 : 1,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.4rem' }}>{f.emoji}</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{
+              fontSize: '0.7rem', color: '#a06b8a',
+              textAlign: 'center', marginTop: '10px', marginBottom: 0
+            }}>每顆水果 +1 經驗值 ✨ 完成任務可以獲得新水果！</p>
           </div>
         )}
       </div>
@@ -1080,6 +1206,9 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                 transition: 'width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
               }} />
             </div>
+            <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
+              💡 每完成一個任務可獲得一顆水果～
+            </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1091,9 +1220,7 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                   className="task-card"
                   onClick={() => toggleTask(task.id)}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '14px',
+                    display: 'flex', alignItems: 'center', gap: '14px',
                     padding: '16px 18px',
                     background: checked
                       ? 'linear-gradient(135deg, rgba(255, 209, 220, 0.95), rgba(196, 169, 255, 0.85))'
@@ -1107,14 +1234,10 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                   }}
                 >
                   <div style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
+                    width: '32px', height: '32px', borderRadius: '50%',
                     background: checked ? 'linear-gradient(135deg, #ff9ec7, #c4a3ff)' : 'rgba(255, 255, 255, 0.9)',
                     border: checked ? 'none' : '2.5px solid #ffc1d6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                     transition: 'all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
                     boxShadow: checked ? '0 2px 8px rgba(255, 158, 199, 0.4)' : 'none'
@@ -1123,9 +1246,7 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                   </div>
                   <span style={{ fontSize: '1.5rem' }}>{task.emoji}</span>
                   <span style={{
-                    flex: 1,
-                    fontSize: '1.05rem',
-                    fontWeight: 600,
+                    flex: 1, fontSize: '1.05rem', fontWeight: 600,
                     color: checked ? '#8b5a7a' : '#5a3a4a',
                     textDecoration: checked ? 'line-through' : 'none',
                     textDecorationColor: '#ff9ec7',
@@ -1138,11 +1259,9 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
 
           {allDoneToday && (
             <div style={{
-              marginTop: '20px',
-              padding: '20px',
+              marginTop: '20px', padding: '20px',
               background: 'linear-gradient(135deg, #fff4e6, #ffe0f0, #f0e0ff)',
-              borderRadius: '24px',
-              textAlign: 'center',
+              borderRadius: '24px', textAlign: 'center',
               border: '2px dashed #ffb3d9',
               animation: 'wiggle 2s ease-in-out infinite'
             }}>
@@ -1181,16 +1300,12 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
       ...d,
       moodsCustom: d.moodsCustom.includes(val) ? d.moodsCustom : [...d.moodsCustom, val]
     }));
-    setMoodInput('');
-    playDingSound();
-    flashSaved('mood');
+    setMoodInput(''); playDingSound(); flashSaved('mood');
   };
-
   const removeMoodCustom = (val) => {
     const today = todayKey();
     updateDiary(today, d => ({ ...d, moodsCustom: d.moodsCustom.filter(m => m !== val) }));
   };
-
   const saveBodyCustom = () => {
     if (!bodyInput.trim()) return;
     const val = bodyInput.trim();
@@ -1199,22 +1314,16 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
       ...d,
       bodyCustom: d.bodyCustom.includes(val) ? d.bodyCustom : [...d.bodyCustom, val]
     }));
-    setBodyInput('');
-    playDingSound();
-    flashSaved('body');
+    setBodyInput(''); playDingSound(); flashSaved('body');
   };
-
   const removeBodyCustom = (val) => {
     const today = todayKey();
     updateDiary(today, d => ({ ...d, bodyCustom: d.bodyCustom.filter(b => b !== val) }));
   };
-
   const saveText = () => {
     const today = todayKey();
     updateDiary(today, d => ({ ...d, text: textDraft }));
-    setTextSaved(true);
-    playDingSound();
-    flashSaved('text');
+    setTextSaved(true); playDingSound(); flashSaved('text');
   };
 
   const sectionStyle = {
@@ -1227,10 +1336,8 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
     boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
   };
   const sectionTitle = {
-    margin: '0 0 14px',
-    color: '#7a4a6b',
-    fontFamily: '"Fredoka", sans-serif',
-    fontSize: '1.1rem'
+    margin: '0 0 14px', color: '#7a4a6b',
+    fontFamily: '"Fredoka", sans-serif', fontSize: '1.1rem'
   };
 
   const SaveBtn = ({ onClick, savedFlash }) => (
@@ -1238,21 +1345,13 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
       onClick={onClick}
       className="candy-btn"
       style={{
-        padding: '10px 16px',
-        borderRadius: '14px',
-        border: 'none',
+        padding: '10px 16px', borderRadius: '14px', border: 'none',
         background: savedFlash ? 'linear-gradient(135deg, #a3e0a3, #7fcc7f)' : 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
-        color: 'white',
-        fontWeight: 700,
-        cursor: 'pointer',
+        color: 'white', fontWeight: 700, cursor: 'pointer',
         boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '4px',
-        fontFamily: 'inherit',
-        fontSize: '0.85rem',
-        transition: 'all 0.2s',
-        whiteSpace: 'nowrap'
+        display: 'flex', alignItems: 'center', gap: '4px',
+        fontFamily: 'inherit', fontSize: '0.85rem',
+        transition: 'all 0.2s', whiteSpace: 'nowrap'
       }}
     >
       {savedFlash ? <><Check size={14} strokeWidth={3} /> 已存</> : <><Save size={14} strokeWidth={3} /> 儲存</>}
@@ -1267,72 +1366,37 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
           {MOOD_OPTIONS.map(m => {
             const selected = diary.moods.includes(m.id);
             return (
-              <button
-                key={m.id}
-                className="chip"
-                onClick={() => toggleMood(m.id)}
-                style={{
-                  border: selected ? `2.5px solid ${m.color}` : '2px solid rgba(255, 209, 220, 0.5)',
-                  background: selected ? `${m.color}30` : 'white',
-                  padding: '8px 14px',
-                  borderRadius: '999px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  color: '#5a3a4a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: selected ? `0 2px 8px ${m.color}50` : 'none',
-                  fontFamily: 'inherit'
-                }}
-              >
-                <span style={{ fontSize: '1.1rem' }}>{m.emoji}</span>
-                {m.label}
+              <button key={m.id} className="chip" onClick={() => toggleMood(m.id)} style={{
+                border: selected ? `2.5px solid ${m.color}` : '2px solid rgba(255, 209, 220, 0.5)',
+                background: selected ? `${m.color}30` : 'white',
+                padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
+                fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                boxShadow: selected ? `0 2px 8px ${m.color}50` : 'none', fontFamily: 'inherit'
+              }}>
+                <span style={{ fontSize: '1.1rem' }}>{m.emoji}</span>{m.label}
               </button>
             );
           })}
           {diary.moodsCustom.map((c, i) => (
-            <button
-              key={`custom-${i}`}
-              className="chip"
-              onClick={() => removeMoodCustom(c)}
-              style={{
-                border: '2.5px solid #ff9ec7',
-                background: '#ff9ec730',
-                padding: '8px 14px',
-                borderRadius: '999px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: '#5a3a4a',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontFamily: 'inherit'
-              }}
-              title="點擊移除"
-            >
-              ✨ {c} <X size={12} style={{ marginLeft: '2px' }} />
-            </button>
+            <button key={`custom-${i}`} className="chip" onClick={() => removeMoodCustom(c)} style={{
+              border: '2.5px solid #ff9ec7', background: '#ff9ec730',
+              padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
+              fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
+              display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit'
+            }} title="點擊移除">✨ {c} <X size={12} /></button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
-            type="text"
-            value={moodInput}
+            type="text" value={moodInput}
             onChange={e => setMoodInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && saveMoodCustom()}
             placeholder="自己加一個心情..."
             style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '14px',
-              border: '2px solid #ffd1dc',
-              background: 'white',
-              fontSize: '0.9rem',
-              fontFamily: 'inherit',
-              color: '#5a3a4a'
+              flex: 1, padding: '10px 14px', borderRadius: '14px',
+              border: '2px solid #ffd1dc', background: 'white',
+              fontSize: '0.9rem', fontFamily: 'inherit', color: '#5a3a4a'
             }}
           />
           <SaveBtn onClick={saveMoodCustom} savedFlash={showSavedFlash === 'mood'} />
@@ -1345,72 +1409,37 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
           {BODY_OPTIONS.map(b => {
             const selected = diary.body.includes(b.id);
             return (
-              <button
-                key={b.id}
-                className="chip"
-                onClick={() => toggleBody(b.id)}
-                style={{
-                  border: selected ? `2.5px solid ${b.color}` : '2px solid rgba(255, 209, 220, 0.5)',
-                  background: selected ? `${b.color}30` : 'white',
-                  padding: '8px 14px',
-                  borderRadius: '999px',
-                  cursor: 'pointer',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  color: '#5a3a4a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: selected ? `0 2px 8px ${b.color}50` : 'none',
-                  fontFamily: 'inherit'
-                }}
-              >
-                <span style={{ fontSize: '1.1rem' }}>{b.emoji}</span>
-                {b.label}
+              <button key={b.id} className="chip" onClick={() => toggleBody(b.id)} style={{
+                border: selected ? `2.5px solid ${b.color}` : '2px solid rgba(255, 209, 220, 0.5)',
+                background: selected ? `${b.color}30` : 'white',
+                padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
+                fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                boxShadow: selected ? `0 2px 8px ${b.color}50` : 'none', fontFamily: 'inherit'
+              }}>
+                <span style={{ fontSize: '1.1rem' }}>{b.emoji}</span>{b.label}
               </button>
             );
           })}
           {diary.bodyCustom.map((c, i) => (
-            <button
-              key={`bcustom-${i}`}
-              className="chip"
-              onClick={() => removeBodyCustom(c)}
-              style={{
-                border: '2.5px solid #c4a3ff',
-                background: '#c4a3ff30',
-                padding: '8px 14px',
-                borderRadius: '999px',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: '#5a3a4a',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontFamily: 'inherit'
-              }}
-              title="點擊移除"
-            >
-              💫 {c} <X size={12} style={{ marginLeft: '2px' }} />
-            </button>
+            <button key={`bcustom-${i}`} className="chip" onClick={() => removeBodyCustom(c)} style={{
+              border: '2.5px solid #c4a3ff', background: '#c4a3ff30',
+              padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
+              fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
+              display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit'
+            }} title="點擊移除">💫 {c} <X size={12} /></button>
           ))}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
-            type="text"
-            value={bodyInput}
+            type="text" value={bodyInput}
             onChange={e => setBodyInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && saveBodyCustom()}
             placeholder="自己加一個身體狀況..."
             style={{
-              flex: 1,
-              padding: '10px 14px',
-              borderRadius: '14px',
-              border: '2px solid #ffd1dc',
-              background: 'white',
-              fontSize: '0.9rem',
-              fontFamily: 'inherit',
-              color: '#5a3a4a'
+              flex: 1, padding: '10px 14px', borderRadius: '14px',
+              border: '2px solid #ffd1dc', background: 'white',
+              fontSize: '0.9rem', fontFamily: 'inherit', color: '#5a3a4a'
             }}
           />
           <SaveBtn onClick={saveBodyCustom} savedFlash={showSavedFlash === 'body'} />
@@ -1424,17 +1453,11 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
           onChange={e => { setTextDraft(e.target.value); setTextSaved(false); }}
           placeholder="今天發生了什麼事呢？"
           style={{
-            width: '100%',
-            minHeight: '160px',
-            padding: '14px',
-            borderRadius: '16px',
-            border: '2px solid #ffd1dc',
-            background: 'white',
-            fontSize: '0.95rem',
-            fontFamily: 'inherit',
-            color: '#5a3a4a',
-            lineHeight: '1.6',
-            resize: 'vertical'
+            width: '100%', minHeight: '160px', padding: '14px',
+            borderRadius: '16px', border: '2px solid #ffd1dc',
+            background: 'white', fontSize: '0.95rem',
+            fontFamily: 'inherit', color: '#5a3a4a',
+            lineHeight: '1.6', resize: 'vertical'
           }}
         />
         <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1463,54 +1486,34 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
         <h3 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>✨ 新增任務</h3>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
-            type="text"
-            value={newTaskName}
+            type="text" value={newTaskName}
             onChange={e => setNewTaskName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addTask()}
             placeholder="例如：喝水、運動..."
             style={{
-              flex: 1,
-              padding: '12px 16px',
-              borderRadius: '16px',
-              border: '2px solid #ffd1dc',
-              background: 'white',
-              fontSize: '1rem',
-              fontFamily: 'inherit',
-              color: '#5a3a4a'
+              flex: 1, padding: '12px 16px', borderRadius: '16px',
+              border: '2px solid #ffd1dc', background: 'white',
+              fontSize: '1rem', fontFamily: 'inherit', color: '#5a3a4a'
             }}
           />
           <button
-            className="candy-btn"
-            onClick={addTask}
+            className="candy-btn" onClick={addTask}
             style={{
-              padding: '0 18px',
-              borderRadius: '16px',
-              border: 'none',
+              padding: '0 18px', borderRadius: '16px', border: 'none',
               background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
-              color: 'white',
-              fontWeight: 700,
-              cursor: 'pointer',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
+              display: 'flex', alignItems: 'center', gap: '4px'
             }}
-          >
-            <Plus size={18} strokeWidth={3} />
-          </button>
+          ><Plus size={18} strokeWidth={3} /></button>
         </div>
       </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {tasks.map(task => (
           <div key={task.id} style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '14px 16px',
-            background: 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '18px',
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '14px 16px', background: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(10px)', borderRadius: '18px',
             border: '2px solid rgba(255, 255, 255, 0.9)',
             boxShadow: '0 4px 12px rgba(255, 158, 199, 0.1)'
           }}>
@@ -1520,20 +1523,11 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
               className="candy-btn"
               onClick={() => deleteTask(task.id)}
               style={{
-                width: '34px',
-                height: '34px',
-                borderRadius: '50%',
-                border: 'none',
-                background: 'rgba(255, 200, 220, 0.5)',
-                color: '#d4587a',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                width: '34px', height: '34px', borderRadius: '50%', border: 'none',
+                background: 'rgba(255, 200, 220, 0.5)', color: '#d4587a',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
-            >
-              <Trash2 size={16} />
-            </button>
+            ><Trash2 size={16} /></button>
           </div>
         ))}
         {tasks.length === 0 && (
@@ -1564,9 +1558,9 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
   const hasDiaryEntry = (k) => {
     const d = diaries[k];
     if (!d) return false;
-    return (d.moods && d.moods.length > 0) || (d.body && d.body.length > 0) ||
-           (d.moodsCustom && d.moodsCustom.length > 0) || (d.bodyCustom && d.bodyCustom.length > 0) ||
-           (d.text && d.text.trim().length > 0);
+    return (d.moods?.length > 0) || (d.body?.length > 0) ||
+           (d.moodsCustom?.length > 0) || (d.bodyCustom?.length > 0) ||
+           (d.text?.trim().length > 0);
   };
 
   const moodById = (id) => MOOD_OPTIONS.find(m => m.id === id);
@@ -1575,50 +1569,23 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
   return (
     <div style={{ padding: '0 20px' }}>
       <div style={{
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '24px',
-        padding: '20px',
-        marginBottom: '16px',
+        background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)',
+        borderRadius: '24px', padding: '20px', marginBottom: '16px',
         border: '2px solid rgba(255, 255, 255, 0.9)',
         boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <button
-            className="candy-btn"
-            onClick={() => setMonth(new Date(year, m - 1, 1))}
-            style={{
-              background: 'rgba(255, 209, 220, 0.4)',
-              border: 'none',
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <ChevronLeft size={18} color="#a06b8a" />
-          </button>
+          <button className="candy-btn" onClick={() => setMonth(new Date(year, m - 1, 1))} style={{
+            background: 'rgba(255, 209, 220, 0.4)', border: 'none',
+            width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}><ChevronLeft size={18} color="#a06b8a" /></button>
           <h3 style={{ margin: 0, color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>{year} {monthNames[m]}</h3>
-          <button
-            className="candy-btn"
-            onClick={() => setMonth(new Date(year, m + 1, 1))}
-            style={{
-              background: 'rgba(255, 209, 220, 0.4)',
-              border: 'none',
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <ChevronRight size={18} color="#a06b8a" />
-          </button>
+          <button className="candy-btn" onClick={() => setMonth(new Date(year, m + 1, 1))} style={{
+            background: 'rgba(255, 209, 220, 0.4)', border: 'none',
+            width: '36px', height: '36px', borderRadius: '50%', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}><ChevronRight size={18} color="#a06b8a" /></button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '6px' }}>
@@ -1645,27 +1612,15 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             else if (ratio > 0) bg = 'rgba(255, 209, 220, 0.5)';
 
             return (
-              <button
-                key={i}
-                onClick={() => setSelectedDate(cellDate)}
-                style={{
-                  aspectRatio: '1',
-                  border: isToday ? '2.5px solid #ff6b9d' : isSelected ? '2.5px solid #c44dff' : 'none',
-                  background: bg,
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  color: ratio === 1 ? 'white' : '#5a3a4a',
-                  padding: 0,
-                  transition: 'all 0.2s',
-                  position: 'relative'
-                }}
-              >
+              <button key={i} onClick={() => setSelectedDate(cellDate)} style={{
+                aspectRatio: '1',
+                border: isToday ? '2.5px solid #ff6b9d' : isSelected ? '2.5px solid #c44dff' : 'none',
+                background: bg, borderRadius: '12px', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                fontSize: '0.85rem', fontWeight: 600,
+                color: ratio === 1 ? 'white' : '#5a3a4a',
+                padding: 0, transition: 'all 0.2s', position: 'relative'
+              }}>
                 {d}
                 {tasks.length > 0 && completed > 0 && (
                   <div style={{ fontSize: '0.6rem', marginTop: '1px', opacity: 0.8 }}>
@@ -1673,12 +1628,7 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                   </div>
                 )}
                 {hasDiary && (
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '3px',
-                    right: '4px',
-                    fontSize: '0.5rem'
-                  }}>📖</div>
+                  <div style={{ position: 'absolute', bottom: '3px', right: '4px', fontSize: '0.5rem' }}>📖</div>
                 )}
               </button>
             );
@@ -1688,10 +1638,8 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
 
       {selectedDate && (
         <div style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '24px',
-          padding: '20px',
+          background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)',
+          borderRadius: '24px', padding: '20px',
           border: '2px solid rgba(255, 255, 255, 0.9)',
           boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
         }}>
@@ -1707,21 +1655,14 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                   const done = !!selectedChecks[task.id];
                   return (
                     <div key={task.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
+                      display: 'flex', alignItems: 'center', gap: '10px',
                       padding: '10px 14px',
                       background: done ? 'rgba(255, 209, 220, 0.4)' : 'rgba(240, 240, 240, 0.5)',
-                      borderRadius: '14px',
-                      opacity: done ? 1 : 0.6
+                      borderRadius: '14px', opacity: done ? 1 : 0.6
                     }}>
                       <span style={{ fontSize: '1.1rem' }}>{task.emoji}</span>
                       <span style={{ flex: 1, color: '#5a3a4a', fontWeight: 500, fontSize: '0.95rem' }}>{task.name}</span>
-                      {done ? (
-                        <Check size={16} color="#ff6b9d" strokeWidth={3} />
-                      ) : (
-                        <span style={{ fontSize: '0.75rem', color: '#c089a3' }}>未完成</span>
-                      )}
+                      {done ? <Check size={16} color="#ff6b9d" strokeWidth={3} /> : <span style={{ fontSize: '0.75rem', color: '#c089a3' }}>未完成</span>}
                     </div>
                   );
                 })}
@@ -1738,25 +1679,17 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                   if (!m) return null;
                   return (
                     <span key={id} style={{
-                      padding: '6px 12px',
-                      borderRadius: '999px',
-                      background: `${m.color}30`,
-                      border: `2px solid ${m.color}`,
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: '#5a3a4a'
+                      padding: '6px 12px', borderRadius: '999px',
+                      background: `${m.color}30`, border: `2px solid ${m.color}`,
+                      fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
                     }}>{m.emoji} {m.label}</span>
                   );
                 })}
                 {selectedDiary.moodsCustom?.map((c, i) => (
                   <span key={`mc${i}`} style={{
-                    padding: '6px 12px',
-                    borderRadius: '999px',
-                    background: '#ff9ec730',
-                    border: '2px solid #ff9ec7',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: '#5a3a4a'
+                    padding: '6px 12px', borderRadius: '999px',
+                    background: '#ff9ec730', border: '2px solid #ff9ec7',
+                    fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
                   }}>✨ {c}</span>
                 ))}
               </div>
@@ -1772,25 +1705,17 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                   if (!b) return null;
                   return (
                     <span key={id} style={{
-                      padding: '6px 12px',
-                      borderRadius: '999px',
-                      background: `${b.color}30`,
-                      border: `2px solid ${b.color}`,
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      color: '#5a3a4a'
+                      padding: '6px 12px', borderRadius: '999px',
+                      background: `${b.color}30`, border: `2px solid ${b.color}`,
+                      fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
                     }}>{b.emoji} {b.label}</span>
                   );
                 })}
                 {selectedDiary.bodyCustom?.map((c, i) => (
                   <span key={`bc${i}`} style={{
-                    padding: '6px 12px',
-                    borderRadius: '999px',
-                    background: '#c4a3ff30',
-                    border: '2px solid #c4a3ff',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: '#5a3a4a'
+                    padding: '6px 12px', borderRadius: '999px',
+                    background: '#c4a3ff30', border: '2px solid #c4a3ff',
+                    fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
                   }}>💫 {c}</span>
                 ))}
               </div>
@@ -1801,16 +1726,10 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             <>
               <div style={{ fontSize: '0.85rem', color: '#a06b8a', fontWeight: 700, marginBottom: '8px' }}>📝 日記</div>
               <div style={{
-                padding: '14px',
-                background: 'rgba(255, 240, 245, 0.5)',
-                borderRadius: '14px',
-                fontSize: '0.92rem',
-                color: '#5a3a4a',
-                lineHeight: '1.6',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {selectedDiary.text}
-              </div>
+                padding: '14px', background: 'rgba(255, 240, 245, 0.5)',
+                borderRadius: '14px', fontSize: '0.92rem',
+                color: '#5a3a4a', lineHeight: '1.6', whiteSpace: 'pre-wrap'
+              }}>{selectedDiary.text}</div>
             </>
           )}
 
