@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, ChevronLeft, ChevronRight, Trophy, BookHeart, Save } from 'lucide-react';
+import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, ChevronLeft, ChevronRight, Trophy, BookHeart, Save, Home as HomeIcon, Gift } from 'lucide-react';
 
 const storage = {
   get: (key) => {
@@ -50,7 +50,55 @@ const FRUITS = [
   { id: 'cherry', emoji: '🍒', name: '櫻桃', weight: 5 },
 ];
 
-// Level XP curve
+const DAILY_FRUIT_CAP = 5;
+
+// Furniture catalog - unlocked at different ages
+const FURNITURE_CATALOG = {
+  // Initially available (LV0 starter set)
+  starter: [
+    { id: 'mat', emoji: '🟦', name: '小地墊' },
+    { id: 'cloud', emoji: '☁️', name: '雲朵抱枕' },
+    { id: 'flower1', emoji: '🌷', name: '鬱金香' },
+  ],
+  // Background colors / themes
+  backgrounds: [
+    { id: 'pink', name: '甜心粉', gradient: 'linear-gradient(180deg, #ffe0eb 0%, #ffd1dc 100%)' },
+    { id: 'sky', name: '天空藍', gradient: 'linear-gradient(180deg, #d6ecff 0%, #b3d9ff 100%)' },
+    { id: 'lavender', name: '薰衣草', gradient: 'linear-gradient(180deg, #e8d6ff 0%, #d4b3ff 100%)' },
+    { id: 'mint', name: '薄荷綠', gradient: 'linear-gradient(180deg, #d6ffe9 0%, #b3ffd1 100%)' },
+    { id: 'peach', name: '蜜桃橘', gradient: 'linear-gradient(180deg, #ffe5d6 0%, #ffd1b3 100%)' },
+    { id: 'starry', name: '星空夜', gradient: 'linear-gradient(180deg, #2a1f4d 0%, #4d3a7a 100%)' },
+  ],
+  // 1-year reward pool
+  age1: [
+    { id: 'sofa_pink', emoji: '🛋️', name: '粉沙發' },
+    { id: 'lamp', emoji: '💡', name: '小檯燈' },
+    { id: 'plant', emoji: '🪴', name: '綠植栽' },
+  ],
+  age2: [
+    { id: 'cake', emoji: '🎂', name: '生日蛋糕' },
+    { id: 'balloon', emoji: '🎈', name: '氣球' },
+    { id: 'gift', emoji: '🎁', name: '禮物盒' },
+  ],
+  age3: [
+    { id: 'rainbow', emoji: '🌈', name: '彩虹' },
+    { id: 'castle', emoji: '🏰', name: '迷你城堡' },
+    { id: 'unicorn', emoji: '🦄', name: '獨角獸' },
+  ],
+  age5: [
+    { id: 'crystal', emoji: '🔮', name: '水晶球' },
+    { id: 'sakura', emoji: '🌸', name: '櫻花樹' },
+    { id: 'star', emoji: '⭐', name: '星星裝飾' },
+  ],
+  age10: [
+    { id: 'crown', emoji: '👑', name: '皇冠' },
+    { id: 'trophy', emoji: '🏆', name: '獎盃' },
+    { id: 'diamond', emoji: '💎', name: '鑽石' },
+  ],
+};
+
+const ANNIVERSARY_AGES = [1, 2, 3, 5, 10];
+
 function xpForLevel(lv) {
   if (lv <= 0) return 0;
   if (lv <= 5) return 2 + (lv - 1);
@@ -102,7 +150,6 @@ function pickFruit() {
   return FRUITS[0].id;
 }
 
-// Pet age in pet-years (1 human day = 3/365 pet years -> 1 year = 3 pet years)
 function getPetAgeYears(createdAt) {
   if (!createdAt) return 0;
   const ms = Date.now() - new Date(createdAt).getTime();
@@ -111,10 +158,18 @@ function getPetAgeYears(createdAt) {
 }
 
 function getPetStage(ageYears) {
-  if (ageYears < 0.5) return { name: '寶寶', emoji: '🍼' };       // <2 months human
-  if (ageYears < 1.5) return { name: '幼年', emoji: '🌱' };       // 2-6 months
-  if (ageYears < 3) return { name: '少年', emoji: '✨' };          // 6-12 months
-  return { name: '成年', emoji: '🌸' };                            // 1+ year
+  if (ageYears < 0.5) return { name: '寶寶', emoji: '🍼' };
+  if (ageYears < 1.5) return { name: '幼年', emoji: '🌱' };
+  if (ageYears < 3) return { name: '少年', emoji: '✨' };
+  return { name: '成年', emoji: '🌸' };
+}
+
+// Get reward pool for a given age milestone
+function getRewardPool(age) {
+  const pool = FURNITURE_CATALOG[`age${age}`] || [];
+  // Include a random background as one of the choices
+  const bgIdx = Math.floor(Math.random() * FURNITURE_CATALOG.backgrounds.length);
+  return [...pool, { ...FURNITURE_CATALOG.backgrounds[bgIdx], type: 'background' }];
 }
 
 export default function App() {
@@ -130,7 +185,6 @@ export default function App() {
   const [weeklyData, setWeeklyData] = useState(null);
   const [confettiKey, setConfettiKey] = useState(0);
 
-  // Pet state
   const [pet, setPet] = useState(null);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [petNameInput, setPetNameInput] = useState('');
@@ -139,12 +193,18 @@ export default function App() {
   const [petBubble, setPetBubble] = useState(null);
   const [petAnimKey, setPetAnimKey] = useState(0);
   const [petHearts, setPetHearts] = useState(0);
-  const [showFruitGain, setShowFruitGain] = useState(null); // { emoji, key }
+  const [showFruitGain, setShowFruitGain] = useState(null);
   const [showLevelUp, setShowLevelUp] = useState(null);
 
-  // Pet position for walking animation
-  const [petX, setPetX] = useState(50); // percentage 0-100
-  const [petDir, setPetDir] = useState(1); // 1 right, -1 left
+  // Daily fruit count
+  const [dailyFruitCount, setDailyFruitCount] = useState({ date: '', count: 0 });
+
+  // Anniversary reward
+  const [anniversaryReward, setAnniversaryReward] = useState(null); // { age, choices: [...] }
+
+  // Pet position
+  const [petX, setPetX] = useState(50);
+  const [petDir, setPetDir] = useState(1);
   const walkRef = useRef(null);
 
   const audioCtxRef = useRef(null);
@@ -163,17 +223,30 @@ export default function App() {
     const d = storage.get('diaries'); if (d) setDiaries(d);
     const p = storage.get('pet');
     if (p) {
-      // migrate old pet structure
       setPet({
         name: p.name,
         createdAt: p.createdAt,
         level: p.level || 0,
         xp: p.xp || 0,
         fruits: p.fruits || { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
-        lastRewardDate: p.lastRewardDate || {},
+        // New room state
+        unlockedFurniture: p.unlockedFurniture || ['mat', 'cloud', 'flower1'],
+        unlockedBackgrounds: p.unlockedBackgrounds || ['pink'],
+        currentBackground: p.currentBackground || 'pink',
+        // Furniture placed in room: { id: 'mat', x: 30, y: 70 }
+        roomItems: p.roomItems || [],
+        // Anniversaries claimed
+        anniversariesClaimed: p.anniversariesClaimed || [],
       });
     } else {
       setShowNamePrompt(true);
+    }
+    const dfc = storage.get('dailyFruitCount');
+    const today = todayKey();
+    if (dfc && dfc.date === today) {
+      setDailyFruitCount(dfc);
+    } else {
+      setDailyFruitCount({ date: today, count: 0 });
     }
     setLoading(false);
   }, []);
@@ -182,31 +255,43 @@ export default function App() {
   useEffect(() => { if (!loading) storage.set('history', history); }, [history, loading]);
   useEffect(() => { if (!loading) storage.set('diaries', diaries); }, [diaries, loading]);
   useEffect(() => { if (!loading && pet) storage.set('pet', pet); }, [pet, loading]);
+  useEffect(() => { if (!loading) storage.set('dailyFruitCount', dailyFruitCount); }, [dailyFruitCount, loading]);
 
-  // Pet walking animation - move randomly within container
+  // Pet walking - SLOWER (200ms instead of 80ms)
   useEffect(() => {
     if (!pet) return;
     const tick = () => {
       setPetX(x => {
-        // Random target every few seconds
-        const next = x + petDir * (1 + Math.random() * 1.5);
+        const next = x + petDir * (0.5 + Math.random() * 0.8);
         if (next > 80) { setPetDir(-1); return 80; }
         if (next < 20) { setPetDir(1); return 20; }
         return next;
       });
     };
-    walkRef.current = setInterval(tick, 80);
+    walkRef.current = setInterval(tick, 200);
     return () => clearInterval(walkRef.current);
   }, [pet, petDir]);
 
-  // Random direction change occasionally
   useEffect(() => {
     if (!pet) return;
     const i = setInterval(() => {
-      if (Math.random() < 0.3) setPetDir(d => -d);
-    }, 4000);
+      if (Math.random() < 0.25) setPetDir(d => -d);
+    }, 5000);
     return () => clearInterval(i);
   }, [pet]);
+
+  // Anniversary detection
+  useEffect(() => {
+    if (loading || !pet || anniversaryReward) return;
+    const ageYears = getPetAgeYears(pet.createdAt);
+    const claimed = pet.anniversariesClaimed || [];
+    for (const age of ANNIVERSARY_AGES) {
+      if (ageYears >= age && !claimed.includes(age)) {
+        setAnniversaryReward({ age, choices: getRewardPool(age) });
+        break;
+      }
+    }
+  }, [loading, pet, anniversaryReward]);
 
   // Weekly summary
   useEffect(() => {
@@ -253,7 +338,7 @@ export default function App() {
     });
   };
 
-  // Sound helpers
+  // Sounds
   const initAudio = () => {
     if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtxRef.current;
@@ -313,6 +398,18 @@ export default function App() {
       });
     } catch (e) {}
   };
+  const playFanfareSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      // Triumphant fanfare
+      [523, 659, 784, 1047, 1319].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, now + i * 0.12);
+        g.gain.setValueAtTime(0.3, now + i * 0.12); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.12 + 0.5);
+        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.12); o.stop(now + i * 0.12 + 0.5);
+      });
+    } catch (e) {}
+  };
 
   const toggleTask = (taskId) => {
     const today = todayKey();
@@ -326,19 +423,40 @@ export default function App() {
     if (!wasChecked) {
       playPopSound();
       setConfettiKey(k => k + 1);
-      // Award fruit (only first time checking each task each day)
+      // Award fruit if pet exists AND under daily cap
       if (pet) {
-        const fruitId = pickFruit();
-        const fruit = FRUITS.find(f => f.id === fruitId);
-        setPet(p => ({
-          ...p,
-          fruits: { ...p.fruits, [fruitId]: (p.fruits[fruitId] || 0) + 1 }
-        }));
-        setTimeout(() => {
-          playFruitGainSound();
-          setShowFruitGain({ emoji: fruit.emoji, name: fruit.name, key: Date.now() });
-          setTimeout(() => setShowFruitGain(null), 2500);
-        }, 600);
+        // Check daily cap
+        const currentCount = dailyFruitCount.date === today ? dailyFruitCount.count : 0;
+        if (currentCount < DAILY_FRUIT_CAP) {
+          const fruitId = pickFruit();
+          const fruit = FRUITS.find(f => f.id === fruitId);
+          setPet(p => ({
+            ...p,
+            fruits: { ...p.fruits, [fruitId]: (p.fruits[fruitId] || 0) + 1 }
+          }));
+          setDailyFruitCount({ date: today, count: currentCount + 1 });
+          setTimeout(() => {
+            playFruitGainSound();
+            setShowFruitGain({
+              emoji: fruit.emoji,
+              name: fruit.name,
+              key: Date.now(),
+              remaining: DAILY_FRUIT_CAP - (currentCount + 1)
+            });
+            setTimeout(() => setShowFruitGain(null), 2500);
+          }, 600);
+        } else {
+          // Show "no more fruit today" message
+          setTimeout(() => {
+            setShowFruitGain({
+              emoji: '🌙',
+              name: '今日水果上限已達',
+              key: Date.now(),
+              capped: true
+            });
+            setTimeout(() => setShowFruitGain(null), 2500);
+          }, 600);
+        }
       }
     }
   };
@@ -353,7 +471,6 @@ export default function App() {
 
   const deleteTask = (id) => setTasks(prev => prev.filter(t => t.id !== id));
 
-  // Diary
   const getDiary = (key) => diaries[key] || { moods: [], moodsCustom: [], body: [], bodyCustom: [], text: '' };
   const updateDiary = (key, updater) => {
     setDiaries(prev => {
@@ -376,11 +493,9 @@ export default function App() {
     if (!wasSelected) playDingSound();
   };
 
-  // Pet logic
   const confirmPetName = () => {
     const name = petNameInput.trim() || '小幽';
     if (pet) {
-      // rename only
       setPet(p => ({ ...p, name }));
     } else {
       setPet({
@@ -389,7 +504,11 @@ export default function App() {
         level: 0,
         xp: 0,
         fruits: { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
-        lastRewardDate: {},
+        unlockedFurniture: ['mat', 'cloud', 'flower1'],
+        unlockedBackgrounds: ['pink'],
+        currentBackground: 'pink',
+        roomItems: [],
+        anniversariesClaimed: [],
       });
     }
     setShowNamePrompt(false);
@@ -406,13 +525,12 @@ export default function App() {
   const feedFruit = (fruitId) => {
     if (!pet || (pet.fruits[fruitId] || 0) <= 0) return;
     const fruit = FRUITS.find(f => f.id === fruitId);
-    
+
     setPet(p => {
       const newFruits = { ...p.fruits, [fruitId]: p.fruits[fruitId] - 1 };
       let newXp = p.xp + 1;
       let newLevel = p.level;
       let leveledUp = false;
-      // Check level ups (could be multiple if very low level)
       while (newLevel < 100 && newXp >= xpForLevel(newLevel + 1)) {
         newXp -= xpForLevel(newLevel + 1);
         newLevel += 1;
@@ -427,12 +545,12 @@ export default function App() {
       }
       return { ...p, fruits: newFruits, xp: newXp, level: newLevel };
     });
-    
+
     playNomSound();
     setPetAnimKey(k => k + 1);
     setPetHearts(h => h + 1);
     setTimeout(() => setPetHearts(h => Math.max(0, h - 1)), 2000);
-    
+
     const eatMsgs = ['好好吃喔～', `${fruit.name}最棒了！`, '嚼嚼嚼...', '謝謝你 💗', '好幸福 ✨'];
     showBubble(eatMsgs[Math.floor(Math.random() * eatMsgs.length)]);
     setShowFruitPicker(false);
@@ -452,12 +570,53 @@ export default function App() {
     setShowPetMenu(false);
   };
 
+  // Anniversary reward claim
+  const claimReward = (choice) => {
+    if (!anniversaryReward || !pet) return;
+    setPet(p => {
+      const updates = { ...p, anniversariesClaimed: [...(p.anniversariesClaimed || []), anniversaryReward.age] };
+      if (choice.type === 'background') {
+        updates.unlockedBackgrounds = [...new Set([...p.unlockedBackgrounds, choice.id])];
+      } else {
+        updates.unlockedFurniture = [...new Set([...p.unlockedFurniture, choice.id])];
+      }
+      return updates;
+    });
+    playDingSound();
+    setAnniversaryReward(null);
+    showBubble(`謝謝你～${pet.name}長大了！`);
+  };
+
+  // Room: place / remove furniture
+  const placeFurniture = (id, x, y) => {
+    if (!pet) return;
+    setPet(p => ({
+      ...p,
+      roomItems: [...(p.roomItems || []), { uniq: Date.now() + Math.random(), id, x, y }]
+    }));
+  };
+
+  const removeRoomItem = (uniq) => {
+    if (!pet) return;
+    setPet(p => ({
+      ...p,
+      roomItems: (p.roomItems || []).filter(i => i.uniq !== uniq)
+    }));
+  };
+
+  const setBackground = (bgId) => {
+    if (!pet) return;
+    setPet(p => ({ ...p, currentBackground: bgId }));
+  };
+
   const todayChecks = history[todayKey()] || {};
   const completedToday = tasks.filter(t => todayChecks[t.id]).length;
   const allDoneToday = tasks.length > 0 && completedToday === tasks.length;
 
   const now = new Date();
   const isBedtime = ((now.getHours() === 23 && now.getMinutes() >= 30) || now.getHours() === 0) && !allDoneToday && tasks.length > 0;
+
+  const todayFruitCount = dailyFruitCount.date === todayKey() ? dailyFruitCount.count : 0;
 
   if (loading) {
     return (
@@ -493,13 +652,15 @@ export default function App() {
         @keyframes confetti { 0%{transform:translateY(0) rotate(0); opacity:1} 100%{transform:translateY(-300px) rotate(720deg); opacity:0} }
         @keyframes wiggle { 0%,100%{transform:rotate(-3deg)} 50%{transform:rotate(3deg)} }
         @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        @keyframes petWalk { 0%,100%{transform:translateY(0) scaleY(1)} 25%{transform:translateY(-3px) scaleY(0.98)} 75%{transform:translateY(-2px) scaleY(1.02)} }
+        @keyframes petWalk { 0%,100%{transform:translateY(0) scaleY(1)} 25%{transform:translateY(-2px) scaleY(0.99)} 75%{transform:translateY(-1px) scaleY(1.01)} }
         @keyframes petBounce { 0%{transform:scale(1)} 25%{transform:scale(1.15) translateY(-12px)} 50%{transform:scale(0.95) translateY(0)} 75%{transform:scale(1.05) translateY(-4px)} 100%{transform:scale(1) translateY(0)} }
         @keyframes heartFloat { 0%{opacity:1; transform:translateY(0) scale(0.5)} 50%{opacity:1; transform:translateY(-30px) scale(1.2)} 100%{opacity:0; transform:translateY(-60px) scale(0.8)} }
         @keyframes bubbleIn { 0%{opacity:0; transform:translate(-50%,10px) scale(0.8)} 100%{opacity:1; transform:translate(-50%,0) scale(1)} }
-        @keyframes fruitGain { 0%{opacity:0; transform:translateY(20px) scale(0.5)} 20%{opacity:1; transform:translateY(0) scale(1.2)} 80%{opacity:1; transform:translateY(-10px) scale(1)} 100%{opacity:0; transform:translateY(-40px) scale(0.9)} }
+        @keyframes fruitGain { 0%{opacity:0; transform:translateX(-50%) translateY(20px) scale(0.5)} 20%{opacity:1; transform:translateX(-50%) translateY(0) scale(1.2)} 80%{opacity:1; transform:translateX(-50%) translateY(-10px) scale(1)} 100%{opacity:0; transform:translateX(-50%) translateY(-40px) scale(0.9)} }
         @keyframes levelUpRing { 0%{transform:translate(-50%,-50%) scale(0); opacity:1} 100%{transform:translate(-50%,-50%) scale(3); opacity:0} }
         @keyframes levelUpText { 0%{opacity:0; transform:translate(-50%,-50%) scale(0.5)} 30%{opacity:1; transform:translate(-50%,-50%) scale(1.2)} 70%{opacity:1; transform:translate(-50%,-50%) scale(1)} 100%{opacity:0; transform:translate(-50%,-100%) scale(0.9)} }
+        @keyframes anniversaryGlow { 0%,100%{box-shadow:0 0 30px rgba(255,158,199,0.6),0 0 60px rgba(196,77,255,0.4)} 50%{box-shadow:0 0 50px rgba(255,158,199,0.9),0 0 80px rgba(196,77,255,0.6)} }
+        @keyframes giftBob { 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-8px) rotate(5deg)} }
         .candy-btn { transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
         .candy-btn:active { transform: scale(0.95); }
         .task-card { transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
@@ -528,33 +689,36 @@ export default function App() {
         </div>
       )}
 
-      {/* Fruit gain notification */}
       {showFruitGain && (
         <div key={showFruitGain.key} style={{
-          position: 'fixed',
-          top: '120px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'linear-gradient(135deg, #fff4e6, #ffe0f0)',
-          border: '2px solid #ffb3d9',
+          position: 'fixed', top: '120px', left: '50%',
+          background: showFruitGain.capped
+            ? 'linear-gradient(135deg, #f0e6ff, #e0d4f0)'
+            : 'linear-gradient(135deg, #fff4e6, #ffe0f0)',
+          border: showFruitGain.capped ? '2px solid #b8a3d4' : '2px solid #ffb3d9',
           borderRadius: '20px',
           padding: '12px 20px',
           fontWeight: 700,
-          color: '#a04060',
-          fontSize: '0.95rem',
+          color: showFruitGain.capped ? '#7a5a8a' : '#a04060',
+          fontSize: '0.9rem',
           zIndex: 150,
           boxShadow: '0 8px 24px rgba(255, 158, 199, 0.4)',
           animation: 'fruitGain 2.5s ease-out forwards',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
+          display: 'flex', alignItems: 'center', gap: '8px',
+          flexDirection: 'column'
         }}>
-          <span style={{ fontSize: '1.6rem' }}>{showFruitGain.emoji}</span>
-          獲得 {showFruitGain.name} +1！
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '1.6rem' }}>{showFruitGain.emoji}</span>
+            {showFruitGain.capped ? '今日水果上限已達' : `獲得 ${showFruitGain.name} +1！`}
+          </div>
+          {!showFruitGain.capped && showFruitGain.remaining !== undefined && (
+            <div style={{ fontSize: '0.7rem', color: '#a06b8a', fontWeight: 600 }}>
+              今天還能再拿 {showFruitGain.remaining} 顆
+            </div>
+          )}
         </div>
       )}
 
-      {/* Level up overlay */}
       {showLevelUp && (
         <div key={showLevelUp.key} style={{
           position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 180,
@@ -568,8 +732,7 @@ export default function App() {
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
-            padding: '20px 32px',
-            borderRadius: '24px',
+            padding: '20px 32px', borderRadius: '24px',
             border: '3px solid white',
             boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
             textAlign: 'center',
@@ -577,12 +740,9 @@ export default function App() {
           }}>
             <div style={{ fontSize: '2rem', marginBottom: '4px' }}>🎉✨</div>
             <div style={{
-              fontFamily: '"Fredoka", sans-serif',
-              fontSize: '1.3rem',
-              fontWeight: 700,
+              fontFamily: '"Fredoka", sans-serif', fontSize: '1.3rem', fontWeight: 700,
               background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
             }}>升級到 LV {showLevelUp.level}！</div>
           </div>
         </div>
@@ -590,18 +750,11 @@ export default function App() {
 
       <div style={{ padding: '24px 20px 16px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
         <h1 style={{
-          fontFamily: '"Fredoka", sans-serif',
-          fontSize: '2rem',
-          margin: 0,
+          fontFamily: '"Fredoka", sans-serif', fontSize: '2rem', margin: 0,
           background: 'linear-gradient(90deg, #ff6b9d, #c44dff, #6bb5ff)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          fontWeight: 700,
-          letterSpacing: '-0.02em'
-        }}>
-          🎀 每日任務
-        </h1>
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text', fontWeight: 700, letterSpacing: '-0.02em'
+        }}>🎀 每日任務</h1>
         <p style={{ margin: '4px 0 0', color: '#a06b8a', fontSize: '0.85rem', fontWeight: 500 }}>
           {new Date().toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', weekday: 'long' })}
         </p>
@@ -609,84 +762,69 @@ export default function App() {
 
       {isBedtime && view === 'today' && (
         <div style={{
-          margin: '0 20px 16px',
-          padding: '14px 16px',
+          margin: '0 20px 16px', padding: '14px 16px',
           background: 'linear-gradient(135deg, #fff4e6, #ffe0ec)',
           border: '2px dashed #ff9ec7',
-          borderRadius: '20px',
-          fontSize: '0.9rem',
-          color: '#a04060',
-          textAlign: 'center',
+          borderRadius: '20px', fontSize: '0.9rem',
+          color: '#a04060', textAlign: 'center',
           animation: 'wiggle 2s ease-in-out infinite',
-          position: 'relative',
-          zIndex: 2
-        }}>
-          🌙 睡前提醒～還有任務沒打勾喔！
-        </div>
+          position: 'relative', zIndex: 2
+        }}>🌙 睡前提醒～還有任務沒打勾喔！</div>
       )}
 
       <div style={{ position: 'relative', zIndex: 2 }}>
         {view === 'today' && (
           <>
             <TodayView
-              tasks={tasks}
-              todayChecks={todayChecks}
-              completedToday={completedToday}
-              allDoneToday={allDoneToday}
+              tasks={tasks} todayChecks={todayChecks}
+              completedToday={completedToday} allDoneToday={allDoneToday}
               toggleTask={toggleTask}
+              todayFruitCount={todayFruitCount}
+              hasPet={!!pet}
             />
             {pet && (
               <PetSection
-                pet={pet}
-                petX={petX}
-                petDir={petDir}
-                showPetMenu={showPetMenu}
-                setShowPetMenu={setShowPetMenu}
-                showFruitPicker={showFruitPicker}
-                setShowFruitPicker={setShowFruitPicker}
-                petBubble={petBubble}
-                petAnimKey={petAnimKey}
-                petHearts={petHearts}
-                feedFruit={feedFruit}
-                chatWithPet={chatWithPet}
-                renamePet={renamePet}
+                pet={pet} petX={petX} petDir={petDir}
+                showPetMenu={showPetMenu} setShowPetMenu={setShowPetMenu}
+                showFruitPicker={showFruitPicker} setShowFruitPicker={setShowFruitPicker}
+                petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
+                feedFruit={feedFruit} chatWithPet={chatWithPet} renamePet={renamePet}
                 totalFruits={totalFruits}
               />
             )}
           </>
         )}
 
+        {view === 'room' && pet && (
+          <RoomView
+            pet={pet}
+            placeFurniture={placeFurniture}
+            removeRoomItem={removeRoomItem}
+            setBackground={setBackground}
+          />
+        )}
+
         {view === 'diary' && (
           <DiaryView
             diary={getDiary(todayKey())}
-            toggleMood={toggleMood}
-            toggleBody={toggleBody}
-            updateDiary={updateDiary}
-            todayKey={todayKey}
-            playDingSound={playDingSound}
+            toggleMood={toggleMood} toggleBody={toggleBody}
+            updateDiary={updateDiary} todayKey={todayKey} playDingSound={playDingSound}
           />
         )}
 
         {view === 'calendar' && (
           <CalendarView
-            tasks={tasks}
-            history={history}
-            diaries={diaries}
-            month={calendarMonth}
-            setMonth={setCalendarMonth}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
+            tasks={tasks} history={history} diaries={diaries}
+            month={calendarMonth} setMonth={setCalendarMonth}
+            selectedDate={selectedDate} setSelectedDate={setSelectedDate}
             dateKey={dateKey}
           />
         )}
 
         {view === 'manage' && (
           <ManageView
-            tasks={tasks}
-            newTaskName={newTaskName}
-            setNewTaskName={setNewTaskName}
-            addTask={addTask}
-            deleteTask={deleteTask}
+            tasks={tasks} newTaskName={newTaskName}
+            setNewTaskName={setNewTaskName} addTask={addTask} deleteTask={deleteTask}
           />
         )}
       </div>
@@ -696,38 +834,36 @@ export default function App() {
         background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(20px)',
         borderTop: '2px solid rgba(255, 209, 220, 0.5)',
-        padding: '8px 8px calc(16px + env(safe-area-inset-bottom))',
+        padding: '8px 4px calc(16px + env(safe-area-inset-bottom))',
         display: 'flex', justifyContent: 'space-around',
         zIndex: 50
       }}>
         {[
           { id: 'today', icon: ListTodo, label: '今日' },
+          { id: 'room', icon: HomeIcon, label: '房間' },
           { id: 'diary', icon: BookHeart, label: '日記' },
           { id: 'calendar', icon: CalendarIcon, label: '日曆' },
           { id: 'manage', icon: Sparkles, label: '管理' }
         ].map(item => (
           <button
-            key={item.id}
-            className="candy-btn"
+            key={item.id} className="candy-btn"
             onClick={() => setView(item.id)}
             style={{
               border: 'none',
               background: view === item.id ? 'linear-gradient(135deg, #ff9ec7, #c4a3ff)' : 'transparent',
               color: view === item.id ? 'white' : '#a06b8a',
-              padding: '8px 12px',
-              borderRadius: '14px',
+              padding: '8px 8px', borderRadius: '14px',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-              cursor: 'pointer', fontWeight: 600, fontSize: '0.72rem',
+              cursor: 'pointer', fontWeight: 600, fontSize: '0.7rem',
               boxShadow: view === item.id ? '0 4px 12px rgba(255, 158, 199, 0.4)' : 'none'
             }}
           >
-            <item.icon size={20} strokeWidth={2.5} />
+            <item.icon size={18} strokeWidth={2.5} />
             {item.label}
           </button>
         ))}
       </div>
 
-      {/* Pet name prompt */}
       {showNamePrompt && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -738,8 +874,7 @@ export default function App() {
         }}>
           <div style={{
             background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
-            borderRadius: '28px',
-            padding: '32px 24px 24px',
+            borderRadius: '28px', padding: '32px 24px 24px',
             maxWidth: '340px', width: '100%',
             border: '3px solid white',
             boxShadow: '0 20px 60px rgba(196, 77, 255, 0.3)',
@@ -755,13 +890,11 @@ export default function App() {
               {pet ? '你想叫我什麼呢？' : '我是一隻軟軟的小幽靈～\n你想叫我什麼名字呢？'}
             </p>
             <input
-              type="text"
-              value={petNameInput}
+              type="text" value={petNameInput}
               onChange={e => setPetNameInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && confirmPetName()}
               placeholder="幫我取個可愛的名字..."
-              maxLength={10}
-              autoFocus
+              maxLength={10} autoFocus
               style={{
                 width: '100%', padding: '12px 16px', borderRadius: '16px',
                 border: '2px solid #ffd1dc', background: 'white',
@@ -795,7 +928,79 @@ export default function App() {
         </div>
       )}
 
-      {/* Weekly summary */}
+      {/* Anniversary reward modal */}
+      {anniversaryReward && pet && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(122, 74, 107, 0.5)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', zIndex: 250
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #fff0f5, #fce4ff, #e0f0ff)',
+            borderRadius: '28px',
+            padding: '28px 24px',
+            maxWidth: '380px', width: '100%',
+            border: '3px solid white',
+            animation: 'anniversaryGlow 2s ease-in-out infinite',
+            position: 'relative',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '4px', animation: 'giftBob 1.5s ease-in-out infinite' }}>🎁</div>
+            <h2 style={{
+              margin: '0 0 8px',
+              fontFamily: '"Fredoka", sans-serif',
+              fontSize: '1.4rem',
+              background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}>
+              {pet.name} {anniversaryReward.age} 歲生日！
+            </h2>
+            <p style={{ margin: '0 0 20px', color: '#7a4a6b', fontSize: '0.9rem' }}>
+              選一個禮物給 {pet.name} 吧 ✨
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {anniversaryReward.choices.map((c, i) => (
+                <button
+                  key={i}
+                  onClick={() => claimReward(c)}
+                  className="candy-btn"
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '18px',
+                    border: '2px solid rgba(255, 158, 199, 0.5)',
+                    background: c.type === 'background'
+                      ? c.gradient
+                      : 'linear-gradient(135deg, white, #fff5fa)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    fontFamily: 'inherit',
+                    boxShadow: '0 4px 12px rgba(255, 158, 199, 0.2)'
+                  }}
+                >
+                  <span style={{ fontSize: c.type === 'background' ? '1.2rem' : '2rem' }}>
+                    {c.type === 'background' ? '🎨' : c.emoji}
+                  </span>
+                  <div style={{ textAlign: 'left', flex: 1 }}>
+                    <div style={{ fontWeight: 700, color: '#5a3a4a', fontSize: '0.95rem' }}>{c.name}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#a06b8a' }}>
+                      {c.type === 'background' ? '解鎖新背景' : '解鎖新家具'}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p style={{ marginTop: '14px', marginBottom: 0, fontSize: '0.72rem', color: '#a06b8a' }}>
+              到「房間」頁面把禮物擺出來吧 🏠
+            </p>
+          </div>
+        </div>
+      )}
+
       {showWeeklySummary && weeklyData && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -806,8 +1011,7 @@ export default function App() {
         }}>
           <div style={{
             background: 'linear-gradient(135deg, #fff0f5, #fce4ff, #e0f0ff)',
-            borderRadius: '28px',
-            padding: '28px 24px',
+            borderRadius: '28px', padding: '28px 24px',
             maxWidth: '360px', width: '100%',
             border: '3px solid white',
             boxShadow: '0 20px 60px rgba(196, 77, 255, 0.3)',
@@ -821,9 +1025,7 @@ export default function App() {
                 width: '32px', height: '32px', borderRadius: '50%',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
               }}
-            >
-              <X size={18} color="#a06b8a" />
-            </button>
+            ><X size={18} color="#a06b8a" /></button>
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <Trophy size={36} color="#ff9ec7" style={{ marginBottom: '4px' }} />
               <h2 style={{
@@ -857,19 +1059,15 @@ export default function App() {
   );
 }
 
-// Pet SVG - size scales with stage
 function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
-  // baby is smaller, grows over time, capped at adult
-  const stage = getPetStage(ageYears);
   const sizeMultiplier = ageYears < 0.5 ? 0.7 : ageYears < 1.5 ? 0.85 : ageYears < 3 ? 0.95 : 1;
   const finalSize = size * sizeMultiplier;
-  
   return (
     <div
       key={animKey}
       style={{
         width: finalSize, height: finalSize,
-        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 0.6s ease-in-out infinite',
+        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 0.8s ease-in-out infinite',
         display: 'inline-block',
         transform: `scaleX(${facing})`,
         transition: 'transform 0.3s'
@@ -900,8 +1098,7 @@ function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
              C 63 98, 67 98, 70 95 C 73 92, 77 92, 80 95
              C 83 98, 87 98, 90 95 C 94 98, 98 96, 98 92
              L 98 55 C 98 35, 85 15, 60 15 Z"
-          fill="url(#petBody)"
-          filter="url(#petShadow)"
+          fill="url(#petBody)" filter="url(#petShadow)"
         />
         <ellipse cx="38" cy="62" rx="9" ry="6" fill="url(#petCheek)" />
         <ellipse cx="82" cy="62" rx="9" ry="6" fill="url(#petCheek)" />
@@ -920,10 +1117,9 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
   const ageYears = getPetAgeYears(pet.createdAt);
   const stage = getPetStage(ageYears);
   const ageDisplay = ageYears < 1 ? `${Math.floor(ageYears * 12)}個月` : `${ageYears.toFixed(1)} 歲`;
-  
   const xpNeeded = pet.level >= 100 ? 0 : xpForLevel(pet.level + 1);
   const xpPct = pet.level >= 100 ? 100 : (pet.xp / xpNeeded) * 100;
-  
+
   return (
     <div style={{ padding: '24px 20px 0', position: 'relative' }}>
       <div style={{
@@ -935,7 +1131,6 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
         boxShadow: '0 8px 24px rgba(255, 158, 199, 0.2)',
         position: 'relative'
       }}>
-        {/* Stats header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: '10px', padding: '0 4px'
@@ -961,7 +1156,6 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           </div>
         </div>
 
-        {/* XP bar */}
         <div style={{ marginBottom: '12px', padding: '0 4px' }}>
           <div style={{
             display: 'flex', justifyContent: 'space-between',
@@ -972,8 +1166,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           </div>
           <div style={{ height: '10px', background: 'rgba(255, 209, 220, 0.4)', borderRadius: '999px', overflow: 'hidden' }}>
             <div style={{
-              height: '100%',
-              width: `${xpPct}%`,
+              height: '100%', width: `${xpPct}%`,
               background: 'linear-gradient(90deg, #ff9ec7, #ffb3d9, #c4a3ff)',
               backgroundSize: '200% 100%',
               animation: 'shimmer 3s linear infinite',
@@ -983,7 +1176,6 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           </div>
         </div>
 
-        {/* Pet play area */}
         <div style={{
           position: 'relative',
           height: '160px',
@@ -992,7 +1184,6 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           border: '2px dashed rgba(255, 158, 199, 0.4)',
           overflow: 'hidden'
         }}>
-          {/* Floor decorations */}
           <div style={{ position: 'absolute', bottom: '8px', left: '12%', fontSize: '0.9rem', opacity: 0.5 }}>🌸</div>
           <div style={{ position: 'absolute', bottom: '12px', right: '15%', fontSize: '0.8rem', opacity: 0.5 }}>🌷</div>
           <div style={{ position: 'absolute', top: '8px', left: '20%', fontSize: '0.7rem', opacity: 0.4 }}>✨</div>
@@ -1014,8 +1205,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
               color: '#5a3a4a',
               whiteSpace: 'nowrap',
               maxWidth: '180px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              overflow: 'hidden', textOverflow: 'ellipsis',
               zIndex: 10,
               animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
             }}>{petBubble.text}</div>
@@ -1041,17 +1231,14 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
             </div>
           )}
 
-          {/* Pet itself - clickable & walking */}
           <button
             onClick={() => setShowPetMenu(s => !s)}
             style={{
-              position: 'absolute',
-              bottom: '8px',
-              left: `${petX}%`,
-              transform: 'translateX(-50%)',
+              position: 'absolute', bottom: '8px',
+              left: `${petX}%`, transform: 'translateX(-50%)',
               background: 'transparent', border: 'none',
               cursor: 'pointer', padding: 0,
-              transition: 'left 0.4s linear'
+              transition: 'left 1s linear'
             }}
           >
             <PetSVG size={90} animKey={petAnimKey} ageYears={getPetAgeYears(pet.createdAt)} facing={petDir} />
@@ -1086,8 +1273,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
               }}
             >🍓 餵食 ({totalFruits})</button>
             <button
-              onClick={chatWithPet}
-              className="candy-btn"
+              onClick={chatWithPet} className="candy-btn"
               style={{
                 padding: '10px 18px', borderRadius: '999px', border: 'none',
                 background: 'linear-gradient(135deg, #d4b3ff, #c4a3ff)',
@@ -1100,11 +1286,9 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           </div>
         )}
 
-        {/* Fruit picker */}
         {showFruitPicker && (
           <div style={{
-            marginTop: '12px',
-            padding: '14px',
+            marginTop: '12px', padding: '14px',
             background: 'rgba(255, 255, 255, 0.7)',
             borderRadius: '18px',
             animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
@@ -1134,8 +1318,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
                   <button
                     key={f.id}
                     onClick={() => !disabled && feedFruit(f.id)}
-                    disabled={disabled}
-                    className="candy-btn"
+                    disabled={disabled} className="candy-btn"
                     style={{
                       padding: '8px 14px', borderRadius: '14px', border: '2px solid',
                       borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
@@ -1155,7 +1338,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
             <p style={{
               fontSize: '0.7rem', color: '#a06b8a',
               textAlign: 'center', marginTop: '10px', marginBottom: 0
-            }}>每顆水果 +1 經驗值 ✨ 完成任務可以獲得新水果！</p>
+            }}>每顆水果 +1 經驗值 ✨</p>
           </div>
         )}
       </div>
@@ -1163,7 +1346,276 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
   );
 }
 
-function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTask }) {
+function RoomView({ pet, placeFurniture, removeRoomItem, setBackground }) {
+  const [editMode, setEditMode] = useState(false);
+  const [showFurniturePicker, setShowFurniturePicker] = useState(false);
+  const [showBgPicker, setShowBgPicker] = useState(false);
+
+  const bg = FURNITURE_CATALOG.backgrounds.find(b => b.id === pet.currentBackground)
+    || FURNITURE_CATALOG.backgrounds[0];
+
+  // All available furniture (starter + unlocked)
+  const allFurniture = [
+    ...FURNITURE_CATALOG.starter,
+    ...FURNITURE_CATALOG.age1,
+    ...FURNITURE_CATALOG.age2,
+    ...FURNITURE_CATALOG.age3,
+    ...FURNITURE_CATALOG.age5,
+    ...FURNITURE_CATALOG.age10,
+  ];
+  const availableFurniture = allFurniture.filter(f => pet.unlockedFurniture.includes(f.id));
+
+  // Place at random position when adding (since drag is hard on mobile)
+  const handleAddFurniture = (id) => {
+    const x = 15 + Math.random() * 70;
+    const y = 30 + Math.random() * 50;
+    placeFurniture(id, x, y);
+    setShowFurniturePicker(false);
+  };
+
+  const findFurniture = (id) => allFurniture.find(f => f.id === id);
+
+  return (
+    <div style={{ padding: '0 20px' }}>
+      {/* Header card */}
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '24px',
+        padding: '16px 20px',
+        marginBottom: '16px',
+        border: '2px solid rgba(255, 255, 255, 0.9)',
+        boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{
+              margin: 0, fontFamily: '"Fredoka", sans-serif',
+              color: '#7a4a6b', fontSize: '1.1rem'
+            }}>🏠 {pet.name} 的房間</h3>
+            <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#a06b8a' }}>
+              {editMode ? '點家具可移除' : '點家具按鈕新增佈置'}
+            </p>
+          </div>
+          <button
+            className="candy-btn"
+            onClick={() => setEditMode(e => !e)}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '14px', border: 'none',
+              background: editMode
+                ? 'linear-gradient(135deg, #d4b3ff, #c4a3ff)'
+                : 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.8rem', fontFamily: 'inherit',
+              boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)'
+            }}
+          >
+            {editMode ? '完成 ✓' : '編輯'}
+          </button>
+        </div>
+      </div>
+
+      {/* Room scene */}
+      <div style={{
+        position: 'relative',
+        height: '320px',
+        background: bg.gradient,
+        borderRadius: '24px',
+        border: '3px solid white',
+        boxShadow: '0 8px 24px rgba(255, 158, 199, 0.2)',
+        overflow: 'hidden',
+        marginBottom: '16px'
+      }}>
+        {/* Floor line */}
+        <div style={{
+          position: 'absolute', bottom: '20%', left: 0, right: 0,
+          height: '2px',
+          background: 'rgba(255, 255, 255, 0.4)'
+        }} />
+
+        {/* Placed items */}
+        {(pet.roomItems || []).map(item => {
+          const f = findFurniture(item.id);
+          if (!f) return null;
+          return (
+            <button
+              key={item.uniq}
+              onClick={() => editMode && removeRoomItem(item.uniq)}
+              style={{
+                position: 'absolute',
+                left: `${item.x}%`, top: `${item.y}%`,
+                transform: 'translate(-50%, -50%)',
+                background: 'transparent', border: 'none',
+                fontSize: '2.2rem', cursor: editMode ? 'pointer' : 'default',
+                padding: 0,
+                filter: editMode ? 'drop-shadow(0 0 6px rgba(255, 100, 100, 0.6))' : 'none',
+                animation: editMode ? 'wiggle 0.5s ease-in-out infinite' : 'none'
+              }}
+            >{f.emoji}</button>
+          );
+        })}
+
+        {/* The pet itself in the room */}
+        <div style={{
+          position: 'absolute',
+          bottom: '15%', left: '50%',
+          transform: 'translateX(-50%)'
+        }}>
+          <PetSVG size={90} animKey={0} ageYears={getPetAgeYears(pet.createdAt)} facing={1} />
+        </div>
+
+        {(pet.roomItems || []).length === 0 && !editMode && (
+          <div style={{
+            position: 'absolute', top: '20%', left: '50%',
+            transform: 'translateX(-50%)',
+            textAlign: 'center', color: 'rgba(122, 74, 107, 0.7)',
+            fontSize: '0.85rem', fontWeight: 600
+          }}>
+            ✨ 還沒有家具，幫 {pet.name} 佈置房間吧～
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <button
+          className="candy-btn"
+          onClick={() => { setShowFurniturePicker(s => !s); setShowBgPicker(false); }}
+          style={{
+            flex: 1, padding: '12px',
+            borderRadius: '16px', border: 'none',
+            background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+            color: 'white', fontWeight: 700, cursor: 'pointer',
+            fontSize: '0.9rem', fontFamily: 'inherit',
+            boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+          }}
+        >
+          <Plus size={16} strokeWidth={3} /> 加家具
+        </button>
+        <button
+          className="candy-btn"
+          onClick={() => { setShowBgPicker(s => !s); setShowFurniturePicker(false); }}
+          style={{
+            flex: 1, padding: '12px',
+            borderRadius: '16px', border: 'none',
+            background: 'linear-gradient(135deg, #a3c9ff, #6bb5ff)',
+            color: 'white', fontWeight: 700, cursor: 'pointer',
+            fontSize: '0.9rem', fontFamily: 'inherit',
+            boxShadow: '0 4px 12px rgba(107, 181, 255, 0.4)'
+          }}
+        >🎨 換背景</button>
+      </div>
+
+      {/* Furniture picker */}
+      {showFurniturePicker && (
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '24px',
+          padding: '18px',
+          marginBottom: '16px',
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)',
+          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+        }}>
+          <h4 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>
+            可用家具 ({availableFurniture.length})
+          </h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            {availableFurniture.map(f => (
+              <button
+                key={f.id}
+                onClick={() => handleAddFurniture(f.id)}
+                className="candy-btn"
+                style={{
+                  padding: '10px',
+                  borderRadius: '14px',
+                  border: '2px solid #ffd1dc',
+                  background: 'white', cursor: 'pointer',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: '4px',
+                  minWidth: '70px', fontFamily: 'inherit'
+                }}
+              >
+                <span style={{ fontSize: '1.8rem' }}>{f.emoji}</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#5a3a4a' }}>{f.name}</span>
+              </button>
+            ))}
+          </div>
+          <p style={{ marginTop: '10px', marginBottom: 0, fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
+            每次寵物周歲時可以解鎖更多家具 🎁
+          </p>
+        </div>
+      )}
+
+      {/* Background picker */}
+      {showBgPicker && (
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '24px',
+          padding: '18px',
+          marginBottom: '16px',
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)',
+          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+        }}>
+          <h4 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>
+            背景主題
+          </h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+            {FURNITURE_CATALOG.backgrounds.map(b => {
+              const unlocked = pet.unlockedBackgrounds.includes(b.id);
+              const active = pet.currentBackground === b.id;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => unlocked && setBackground(b.id)}
+                  disabled={!unlocked}
+                  className="candy-btn"
+                  style={{
+                    width: '80px', height: '60px',
+                    borderRadius: '14px',
+                    border: active ? '3px solid #ff6b9d' : '2px solid rgba(255, 209, 220, 0.5)',
+                    background: b.gradient,
+                    cursor: unlocked ? 'pointer' : 'default',
+                    opacity: unlocked ? 1 : 0.4,
+                    position: 'relative',
+                    fontFamily: 'inherit',
+                    padding: 0
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', bottom: '4px', left: 0, right: 0,
+                    fontSize: '0.65rem', fontWeight: 700,
+                    color: b.id === 'starry' ? 'white' : '#5a3a4a'
+                  }}>
+                    {b.name} {!unlocked && '🔒'}
+                  </div>
+                  {active && (
+                    <div style={{
+                      position: 'absolute', top: '4px', right: '4px',
+                      background: 'white', borderRadius: '50%',
+                      width: '18px', height: '18px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Check size={12} color="#ff6b9d" strokeWidth={3} />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTask, todayFruitCount, hasPet }) {
+  const fruitsRemaining = Math.max(0, DAILY_FRUIT_CAP - todayFruitCount);
   return (
     <div style={{ padding: '0 20px' }}>
       {tasks.length === 0 ? (
@@ -1206,9 +1658,12 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                 transition: 'width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
               }} />
             </div>
-            <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
-              💡 每完成一個任務可獲得一顆水果～
-            </p>
+            {hasPet && (
+              <p style={{ margin: '10px 0 0', fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
+                🍓 今日水果剩餘 <strong style={{ color: '#ff6b9d' }}>{fruitsRemaining}</strong> / {DAILY_FRUIT_CAP} 顆
+                {fruitsRemaining === 0 && ' · 明天再來！'}
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1216,8 +1671,7 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
               const checked = !!todayChecks[task.id];
               return (
                 <div
-                  key={task.id}
-                  className="task-card"
+                  key={task.id} className="task-card"
                   onClick={() => toggleTask(task.id)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '14px',
@@ -1225,12 +1679,10 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                     background: checked
                       ? 'linear-gradient(135deg, rgba(255, 209, 220, 0.95), rgba(196, 169, 255, 0.85))'
                       : 'rgba(255, 255, 255, 0.85)',
-                    backdropFilter: 'blur(10px)',
-                    borderRadius: '20px',
+                    backdropFilter: 'blur(10px)', borderRadius: '20px',
                     border: '2px solid rgba(255, 255, 255, 0.9)',
                     boxShadow: checked ? '0 4px 16px rgba(255, 158, 199, 0.3)' : '0 4px 12px rgba(255, 158, 199, 0.1)',
-                    cursor: 'pointer',
-                    opacity: checked ? 0.85 : 1
+                    cursor: 'pointer', opacity: checked ? 0.85 : 1
                   }}
                 >
                   <div style={{
@@ -1249,8 +1701,7 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                     flex: 1, fontSize: '1.05rem', fontWeight: 600,
                     color: checked ? '#8b5a7a' : '#5a3a4a',
                     textDecoration: checked ? 'line-through' : 'none',
-                    textDecorationColor: '#ff9ec7',
-                    textDecorationThickness: '2px'
+                    textDecorationColor: '#ff9ec7', textDecorationThickness: '2px'
                   }}>{task.name}</span>
                 </div>
               );
@@ -1342,8 +1793,7 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
 
   const SaveBtn = ({ onClick, savedFlash }) => (
     <button
-      onClick={onClick}
-      className="candy-btn"
+      onClick={onClick} className="candy-btn"
       style={{
         padding: '10px 16px', borderRadius: '14px', border: 'none',
         background: savedFlash ? 'linear-gradient(135deg, #a3e0a3, #7fcc7f)' : 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
@@ -1475,15 +1925,15 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
   return (
     <div style={{ padding: '0 20px' }}>
       <div style={{
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '24px',
-        padding: '20px',
-        marginBottom: '16px',
+        background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)',
+        borderRadius: '24px', padding: '20px', marginBottom: '16px',
         border: '2px solid rgba(255, 255, 255, 0.9)',
         boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
       }}>
         <h3 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>✨ 新增任務</h3>
+        <p style={{ margin: '-8px 0 12px', fontSize: '0.72rem', color: '#a06b8a' }}>
+          💡 每天最多獲得 5 顆水果，超過 5 個任務也只算 5 顆
+        </p>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text" value={newTaskName}
@@ -1520,8 +1970,7 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
             <span style={{ fontSize: '1.4rem' }}>{task.emoji}</span>
             <span style={{ flex: 1, fontWeight: 600, color: '#5a3a4a' }}>{task.name}</span>
             <button
-              className="candy-btn"
-              onClick={() => deleteTask(task.id)}
+              className="candy-btn" onClick={() => deleteTask(task.id)}
               style={{
                 width: '34px', height: '34px', borderRadius: '50%', border: 'none',
                 background: 'rgba(255, 200, 220, 0.5)', color: '#d4587a',
@@ -1545,7 +1994,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
   const daysInMonth = new Date(year, m + 1, 0).getDate();
   const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
