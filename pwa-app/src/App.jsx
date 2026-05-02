@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, ChevronLeft, ChevronRight, Trophy, BookHeart, Save, Home as HomeIcon, Gift } from 'lucide-react';
+import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, ChevronLeft, ChevronRight, Trophy, BookHeart, Save, Home, Gift, ShoppingBag } from 'lucide-react';
 
 const storage = {
   get: (key) => {
@@ -52,52 +52,10 @@ const FRUITS = [
 
 const DAILY_FRUIT_CAP = 5;
 
-// Furniture catalog - unlocked at different ages
-const FURNITURE_CATALOG = {
-  // Initially available (LV0 starter set)
-  starter: [
-    { id: 'mat', emoji: '🟦', name: '小地墊' },
-    { id: 'cloud', emoji: '☁️', name: '雲朵抱枕' },
-    { id: 'flower1', emoji: '🌷', name: '鬱金香' },
-  ],
-  // Background colors / themes
-  backgrounds: [
-    { id: 'pink', name: '甜心粉', gradient: 'linear-gradient(180deg, #ffe0eb 0%, #ffd1dc 100%)' },
-    { id: 'sky', name: '天空藍', gradient: 'linear-gradient(180deg, #d6ecff 0%, #b3d9ff 100%)' },
-    { id: 'lavender', name: '薰衣草', gradient: 'linear-gradient(180deg, #e8d6ff 0%, #d4b3ff 100%)' },
-    { id: 'mint', name: '薄荷綠', gradient: 'linear-gradient(180deg, #d6ffe9 0%, #b3ffd1 100%)' },
-    { id: 'peach', name: '蜜桃橘', gradient: 'linear-gradient(180deg, #ffe5d6 0%, #ffd1b3 100%)' },
-    { id: 'starry', name: '星空夜', gradient: 'linear-gradient(180deg, #2a1f4d 0%, #4d3a7a 100%)' },
-  ],
-  // 1-year reward pool
-  age1: [
-    { id: 'sofa_pink', emoji: '🛋️', name: '粉沙發' },
-    { id: 'lamp', emoji: '💡', name: '小檯燈' },
-    { id: 'plant', emoji: '🪴', name: '綠植栽' },
-  ],
-  age2: [
-    { id: 'cake', emoji: '🎂', name: '生日蛋糕' },
-    { id: 'balloon', emoji: '🎈', name: '氣球' },
-    { id: 'gift', emoji: '🎁', name: '禮物盒' },
-  ],
-  age3: [
-    { id: 'rainbow', emoji: '🌈', name: '彩虹' },
-    { id: 'castle', emoji: '🏰', name: '迷你城堡' },
-    { id: 'unicorn', emoji: '🦄', name: '獨角獸' },
-  ],
-  age5: [
-    { id: 'crystal', emoji: '🔮', name: '水晶球' },
-    { id: 'sakura', emoji: '🌸', name: '櫻花樹' },
-    { id: 'star', emoji: '⭐', name: '星星裝飾' },
-  ],
-  age10: [
-    { id: 'crown', emoji: '👑', name: '皇冠' },
-    { id: 'trophy', emoji: '🏆', name: '獎盃' },
-    { id: 'diamond', emoji: '💎', name: '鑽石' },
-  ],
-};
-
-const ANNIVERSARY_AGES = [1, 2, 3, 5, 10];
+// Pearl drop config: every 3-5 hours randomly
+const PEARL_MIN_INTERVAL_MS = 3 * 60 * 60 * 1000; // 3 hours
+const PEARL_MAX_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours
+const PEARL_VISIBLE_MS = 30 * 1000; // 30 seconds before disappearing if not collected
 
 function xpForLevel(lv) {
   if (lv <= 0) return 0;
@@ -110,35 +68,61 @@ function xpForLevel(lv) {
 }
 
 const PET_GREETINGS = [
-  '嗨～今天過得好嗎？',
-  '見到你最開心了 💕',
-  '哈囉哈囉～想你了！',
-  '你來啦～最棒的一天～',
-  '嘿嘿～又見面了 ✨',
+  '嗨～今天過得好嗎？', '見到你最開心了 💕', '哈囉哈囉～想你了！',
+  '你來啦～最棒的一天～', '嘿嘿～又見面了 ✨',
 ];
 
 const PET_ENCOURAGEMENTS = [
-  '你今天好努力，我都看到了喔！',
-  '一步一步來，沒關係的～',
-  '不管做不做得到，你都很可愛 💗',
-  '記得要好好吃飯睡覺～',
-  '今天的你也是最棒的！',
-  '累了就休息一下，世界不會因為你慢一點就崩塌',
-  '你已經比昨天的自己更厲害了',
-  '我永遠站在你這邊喔 🌸',
-  '小小的進步也是進步！',
-  '愛你愛你～記得也要愛自己',
-  '深呼吸～一切都會慢慢好起來',
-  '你值得世界上所有的溫柔',
-  '不需要完美，做你自己就好',
-  '今天能起床就已經很厲害了！',
-  '把難過的事情交給我，我來幫你裝著～',
-  '記得喝水水！我也要喝～',
-  '再撐一下下，你超級棒的',
-  '失敗也沒關係，我還是最喜歡你',
-  '你笑起來最可愛了 ☺️',
-  '謝謝你今天也來看我 💖',
+  '你今天好努力，我都看到了喔！', '一步一步來，沒關係的～',
+  '不管做不做得到，你都很可愛 💗', '記得要好好吃飯睡覺～',
+  '今天的你也是最棒的！', '累了就休息一下，世界不會因為你慢一點就崩塌',
+  '你已經比昨天的自己更厲害了', '我永遠站在你這邊喔 🌸',
+  '小小的進步也是進步！', '愛你愛你～記得也要愛自己',
+  '深呼吸～一切都會慢慢好起來', '你值得世界上所有的溫柔',
+  '不需要完美，做你自己就好', '今天能起床就已經很厲害了！',
+  '把難過的事情交給我，我來幫你裝著～', '記得喝水水！我也要喝～',
+  '再撐一下下，你超級棒的', '失敗也沒關係，我還是最喜歡你',
+  '你笑起來最可愛了 ☺️', '謝謝你今天也來看我 💖',
 ];
+
+// Furniture catalog with shop prices (in pearls)
+const FURNITURE = [
+  { id: 'sofa', emoji: '🛋️', name: '小沙發', unlockAge: 1, pearlCost: 8 },
+  { id: 'lamp', emoji: '💡', name: '小檯燈', unlockAge: 1, pearlCost: 8 },
+  { id: 'plant', emoji: '🪴', name: '盆栽', unlockAge: 1, pearlCost: 3 },
+  { id: 'teddy', emoji: '🧸', name: '泰迪熊', unlockAge: 1, pearlCost: 8 },
+  { id: 'cake', emoji: '🎂', name: '生日蛋糕', unlockAge: 1, pearlCost: 5 },
+  { id: 'balloon', emoji: '🎈', name: '氣球', unlockAge: 1, pearlCost: 3 },
+  { id: 'candle', emoji: '🕯️', name: '蠟燭', unlockAge: 1, pearlCost: 3 },
+  { id: 'bed', emoji: '🛏️', name: '小床', unlockAge: 3, pearlCost: 20 },
+  { id: 'tv', emoji: '📺', name: '電視', unlockAge: 3, pearlCost: 20 },
+  { id: 'cactus', emoji: '🌵', name: '仙人掌', unlockAge: 3, pearlCost: 5 },
+  { id: 'mirror', emoji: '🪞', name: '小鏡子', unlockAge: 3, pearlCost: 8 },
+  { id: 'clock', emoji: '⏰', name: '鬧鐘', unlockAge: 3, pearlCost: 8 },
+  { id: 'flowers', emoji: '💐', name: '花束', unlockAge: 3, pearlCost: 5 },
+  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 5, pearlCost: 30 },
+  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 5, pearlCost: 20 },
+  { id: 'cat', emoji: '🐱', name: '小貓朋友', unlockAge: 5, pearlCost: 30 },
+  { id: 'rabbit', emoji: '🐰', name: '兔兔朋友', unlockAge: 5, pearlCost: 30 },
+  { id: 'icecream', emoji: '🍦', name: '冰淇淋車', unlockAge: 5, pearlCost: 20 },
+  { id: 'rainbow', emoji: '🌈', name: '小彩虹', unlockAge: 5, pearlCost: 20 },
+  { id: 'unicorn', emoji: '🦄', name: '獨角獸', unlockAge: 10, pearlCost: 50 },
+  { id: 'crown', emoji: '👑', name: '皇冠', unlockAge: 10, pearlCost: 50 },
+  { id: 'star', emoji: '⭐', name: '星星', unlockAge: 10, pearlCost: 30 },
+  { id: 'rocket', emoji: '🚀', name: '小火箭', unlockAge: 10, pearlCost: 50 },
+  { id: 'dragon', emoji: '🐉', name: '小龍', unlockAge: 10, pearlCost: 50 },
+  { id: 'castle', emoji: '🏰', name: '城堡', unlockAge: 10, pearlCost: 50 },
+];
+
+const BACKGROUNDS = [
+  { id: 'pink', name: '粉粉樂園', gradient: 'linear-gradient(180deg, #fff0f5 0%, #ffe4ec 100%)', unlockAge: 0 },
+  { id: 'sky', name: '天空之城', gradient: 'linear-gradient(180deg, #c4e9ff 0%, #fff0f5 100%)', unlockAge: 1 },
+  { id: 'mint', name: '薄荷花園', gradient: 'linear-gradient(180deg, #e0f5ee 0%, #fff5e6 100%)', unlockAge: 3 },
+  { id: 'lavender', name: '薰衣草夢', gradient: 'linear-gradient(180deg, #e0d4f5 0%, #ffe4f0 100%)', unlockAge: 5 },
+  { id: 'sunset', name: '黃昏星空', gradient: 'linear-gradient(180deg, #f5d4e8 0%, #d4a3ff 50%, #6b8be0 100%)', unlockAge: 10 },
+];
+
+const REWARD_AGES = [1, 3, 5, 10];
 
 function pickFruit() {
   const total = FRUITS.reduce((s, f) => s + f.weight, 0);
@@ -164,12 +148,14 @@ function getPetStage(ageYears) {
   return { name: '成年', emoji: '🌸' };
 }
 
-// Get reward pool for a given age milestone
-function getRewardPool(age) {
-  const pool = FURNITURE_CATALOG[`age${age}`] || [];
-  // Include a random background as one of the choices
-  const bgIdx = Math.floor(Math.random() * FURNITURE_CATALOG.backgrounds.length);
-  return [...pool, { ...FURNITURE_CATALOG.backgrounds[bgIdx], type: 'background' }];
+function pickRewardChoices(age, owned) {
+  const available = [
+    ...FURNITURE.filter(f => f.unlockAge === age && !owned.furniture.includes(f.id)).map(f => ({ type: 'furniture', ...f })),
+    ...BACKGROUNDS.filter(b => b.unlockAge === age && !owned.backgrounds.includes(b.id)).map(b => ({ type: 'background', ...b })),
+  ];
+  if (available.length === 0) return [];
+  const shuffled = [...available].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(3, available.length));
 }
 
 export default function App() {
@@ -195,17 +181,23 @@ export default function App() {
   const [petHearts, setPetHearts] = useState(0);
   const [showFruitGain, setShowFruitGain] = useState(null);
   const [showLevelUp, setShowLevelUp] = useState(null);
+  const [pendingReward, setPendingReward] = useState(null);
 
-  // Daily fruit count
-  const [dailyFruitCount, setDailyFruitCount] = useState({ date: '', count: 0 });
+  // Pearl state - active pearl on screen
+  const [activePearl, setActivePearl] = useState(null); // { x, y, expiresAt }
+  const [showPearlGain, setShowPearlGain] = useState(null);
 
-  // Anniversary reward
-  const [anniversaryReward, setAnniversaryReward] = useState(null); // { age, choices: [...] }
+  // Shop state
+  const [showShop, setShowShop] = useState(false);
+  const [shopFlash, setShopFlash] = useState(null); // { id }
+  const [shopError, setShopError] = useState(null);
 
-  // Pet position
   const [petX, setPetX] = useState(50);
   const [petDir, setPetDir] = useState(1);
   const walkRef = useRef(null);
+
+  const [editingRoom, setEditingRoom] = useState(false);
+  const [draggingItem, setDraggingItem] = useState(null);
 
   const audioCtxRef = useRef(null);
 
@@ -213,10 +205,8 @@ export default function App() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
-
   const dateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-  // Load
   useEffect(() => {
     const t = storage.get('tasks'); if (t) setTasks(t);
     const h = storage.get('history'); if (h) setHistory(h);
@@ -229,24 +219,16 @@ export default function App() {
         level: p.level || 0,
         xp: p.xp || 0,
         fruits: p.fruits || { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
-        // New room state
-        unlockedFurniture: p.unlockedFurniture || ['mat', 'cloud', 'flower1'],
-        unlockedBackgrounds: p.unlockedBackgrounds || ['pink'],
-        currentBackground: p.currentBackground || 'pink',
-        // Furniture placed in room: { id: 'mat', x: 30, y: 70 }
+        owned: p.owned || { furniture: [], backgrounds: ['pink'] },
+        currentBg: p.currentBg || 'pink',
         roomItems: p.roomItems || [],
-        // Anniversaries claimed
-        anniversariesClaimed: p.anniversariesClaimed || [],
+        claimedRewards: p.claimedRewards || [],
+        dailyFruits: p.dailyFruits || { date: '', count: 0 },
+        pearls: p.pearls || 0,
+        nextPearlAt: p.nextPearlAt || (Date.now() + PEARL_MIN_INTERVAL_MS + Math.random() * (PEARL_MAX_INTERVAL_MS - PEARL_MIN_INTERVAL_MS)),
       });
     } else {
       setShowNamePrompt(true);
-    }
-    const dfc = storage.get('dailyFruitCount');
-    const today = todayKey();
-    if (dfc && dfc.date === today) {
-      setDailyFruitCount(dfc);
-    } else {
-      setDailyFruitCount({ date: today, count: 0 });
     }
     setLoading(false);
   }, []);
@@ -255,14 +237,12 @@ export default function App() {
   useEffect(() => { if (!loading) storage.set('history', history); }, [history, loading]);
   useEffect(() => { if (!loading) storage.set('diaries', diaries); }, [diaries, loading]);
   useEffect(() => { if (!loading && pet) storage.set('pet', pet); }, [pet, loading]);
-  useEffect(() => { if (!loading) storage.set('dailyFruitCount', dailyFruitCount); }, [dailyFruitCount, loading]);
 
-  // Pet walking - SLOWER (200ms instead of 80ms)
   useEffect(() => {
     if (!pet) return;
     const tick = () => {
       setPetX(x => {
-        const next = x + petDir * (0.5 + Math.random() * 0.8);
+        const next = x + petDir * (0.4 + Math.random() * 0.6);
         if (next > 80) { setPetDir(-1); return 80; }
         if (next < 20) { setPetDir(1); return 20; }
         return next;
@@ -276,24 +256,58 @@ export default function App() {
     if (!pet) return;
     const i = setInterval(() => {
       if (Math.random() < 0.25) setPetDir(d => -d);
-    }, 5000);
+    }, 6000);
     return () => clearInterval(i);
   }, [pet]);
 
-  // Anniversary detection
+  // Pearl drop check - runs every 30 seconds
   useEffect(() => {
-    if (loading || !pet || anniversaryReward) return;
-    const ageYears = getPetAgeYears(pet.createdAt);
-    const claimed = pet.anniversariesClaimed || [];
-    for (const age of ANNIVERSARY_AGES) {
-      if (ageYears >= age && !claimed.includes(age)) {
-        setAnniversaryReward({ age, choices: getRewardPool(age) });
-        break;
+    if (!pet) return;
+    const checkPearl = () => {
+      const now = Date.now();
+      // Generate pearl if time has come and no active pearl
+      if (now >= pet.nextPearlAt && !activePearl) {
+        // Place near pet (randomly close)
+        const px = Math.max(15, Math.min(85, petX + (Math.random() * 20 - 10)));
+        const py = 30 + Math.random() * 40; // somewhere mid-area
+        setActivePearl({
+          x: px,
+          y: py,
+          expiresAt: now + PEARL_VISIBLE_MS,
+          key: now
+        });
+        playPearlAppearSound();
+        // Schedule next pearl
+        const nextDelay = PEARL_MIN_INTERVAL_MS + Math.random() * (PEARL_MAX_INTERVAL_MS - PEARL_MIN_INTERVAL_MS);
+        setPet(p => ({ ...p, nextPearlAt: now + nextDelay }));
+      }
+      // Auto-remove expired pearl
+      if (activePearl && now >= activePearl.expiresAt) {
+        setActivePearl(null);
+      }
+    };
+    const interval = setInterval(checkPearl, 5000); // check every 5s
+    checkPearl(); // also check immediately
+    return () => clearInterval(interval);
+  }, [pet, activePearl, petX]);
+
+  // Age-based rewards
+  useEffect(() => {
+    if (!pet) return;
+    const age = Math.floor(getPetAgeYears(pet.createdAt));
+    for (const rewardAge of REWARD_AGES) {
+      if (age >= rewardAge && !pet.claimedRewards.includes(rewardAge)) {
+        const choices = pickRewardChoices(rewardAge, pet.owned);
+        if (choices.length > 0) {
+          setPendingReward({ age: rewardAge, choices });
+          break;
+        } else {
+          setPet(p => ({ ...p, claimedRewards: [...p.claimedRewards, rewardAge] }));
+        }
       }
     }
-  }, [loading, pet, anniversaryReward]);
+  }, [pet]);
 
-  // Weekly summary
   useEffect(() => {
     if (loading) return;
     const checkWeekly = () => {
@@ -338,7 +352,6 @@ export default function App() {
     });
   };
 
-  // Sounds
   const initAudio = () => {
     if (!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtxRef.current;
@@ -398,15 +411,50 @@ export default function App() {
       });
     } catch (e) {}
   };
-  const playFanfareSound = () => {
+  const playRewardSound = () => {
     try {
       const ctx = initAudio(); const now = ctx.currentTime;
-      // Triumphant fanfare
       [523, 659, 784, 1047, 1319].forEach((f, i) => {
         const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.type = 'triangle'; o.frequency.setValueAtTime(f, now + i * 0.12);
-        g.gain.setValueAtTime(0.3, now + i * 0.12); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.12 + 0.5);
-        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.12); o.stop(now + i * 0.12 + 0.5);
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, now + i * 0.08);
+        g.gain.setValueAtTime(0.3, now + i * 0.08); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.5);
+        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.08); o.stop(now + i * 0.08 + 0.5);
+      });
+    } catch (e) {}
+  };
+  // Twinkly sound for pearl appearing
+  const playPearlAppearSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [1568, 2093, 2637].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f, now + i * 0.06);
+        g.gain.setValueAtTime(0.18, now + i * 0.06); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.06 + 0.3);
+        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.06); o.stop(now + i * 0.06 + 0.3);
+      });
+    } catch (e) {}
+  };
+  // Glittery collect sound
+  const playPearlCollectSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [1047, 1319, 1568, 2093, 2637].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(f, now + i * 0.04);
+        g.gain.setValueAtTime(0.22, now + i * 0.04); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.04 + 0.4);
+        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.04); o.stop(now + i * 0.04 + 0.4);
+      });
+    } catch (e) {}
+  };
+  // Cash register-ish chime for purchase
+  const playPurchaseSound = () => {
+    try {
+      const ctx = initAudio(); const now = ctx.currentTime;
+      [659, 988, 1318].forEach((f, i) => {
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, now + i * 0.08);
+        g.gain.setValueAtTime(0.25, now + i * 0.08); g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.35);
+        o.connect(g); g.connect(ctx.destination); o.start(now + i * 0.08); o.stop(now + i * 0.08 + 0.35);
       });
     } catch (e) {}
   };
@@ -423,37 +471,24 @@ export default function App() {
     if (!wasChecked) {
       playPopSound();
       setConfettiKey(k => k + 1);
-      // Award fruit if pet exists AND under daily cap
       if (pet) {
-        // Check daily cap
-        const currentCount = dailyFruitCount.date === today ? dailyFruitCount.count : 0;
-        if (currentCount < DAILY_FRUIT_CAP) {
+        const todayCount = pet.dailyFruits.date === today ? pet.dailyFruits.count : 0;
+        if (todayCount < DAILY_FRUIT_CAP) {
           const fruitId = pickFruit();
           const fruit = FRUITS.find(f => f.id === fruitId);
           setPet(p => ({
             ...p,
-            fruits: { ...p.fruits, [fruitId]: (p.fruits[fruitId] || 0) + 1 }
+            fruits: { ...p.fruits, [fruitId]: (p.fruits[fruitId] || 0) + 1 },
+            dailyFruits: { date: today, count: todayCount + 1 }
           }));
-          setDailyFruitCount({ date: today, count: currentCount + 1 });
           setTimeout(() => {
             playFruitGainSound();
-            setShowFruitGain({
-              emoji: fruit.emoji,
-              name: fruit.name,
-              key: Date.now(),
-              remaining: DAILY_FRUIT_CAP - (currentCount + 1)
-            });
+            setShowFruitGain({ emoji: fruit.emoji, name: fruit.name, key: Date.now(), capped: false });
             setTimeout(() => setShowFruitGain(null), 2500);
           }, 600);
         } else {
-          // Show "no more fruit today" message
           setTimeout(() => {
-            setShowFruitGain({
-              emoji: '🌙',
-              name: '今日水果上限已達',
-              key: Date.now(),
-              capped: true
-            });
+            setShowFruitGain({ emoji: '🌙', name: '今日水果已滿', key: Date.now(), capped: true });
             setTimeout(() => setShowFruitGain(null), 2500);
           }, 600);
         }
@@ -468,7 +503,6 @@ export default function App() {
     setTasks(prev => [...prev, { id: Date.now().toString(), name: newTaskName.trim(), emoji }]);
     setNewTaskName('');
   };
-
   const deleteTask = (id) => setTasks(prev => prev.filter(t => t.id !== id));
 
   const getDiary = (key) => diaries[key] || { moods: [], moodsCustom: [], body: [], bodyCustom: [], text: '' };
@@ -501,14 +535,15 @@ export default function App() {
       setPet({
         name,
         createdAt: new Date().toISOString(),
-        level: 0,
-        xp: 0,
+        level: 0, xp: 0,
         fruits: { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
-        unlockedFurniture: ['mat', 'cloud', 'flower1'],
-        unlockedBackgrounds: ['pink'],
-        currentBackground: 'pink',
+        owned: { furniture: [], backgrounds: ['pink'] },
+        currentBg: 'pink',
         roomItems: [],
-        anniversariesClaimed: [],
+        claimedRewards: [],
+        dailyFruits: { date: '', count: 0 },
+        pearls: 0,
+        nextPearlAt: Date.now() + PEARL_MIN_INTERVAL_MS,
       });
     }
     setShowNamePrompt(false);
@@ -522,10 +557,49 @@ export default function App() {
     setTimeout(() => setPetBubble(null), 4500);
   };
 
+  const collectPearl = () => {
+    if (!activePearl || !pet) return;
+    setPet(p => ({ ...p, pearls: (p.pearls || 0) + 1 }));
+    setActivePearl(null);
+    playPearlCollectSound();
+    setShowPearlGain({ key: Date.now() });
+    setTimeout(() => setShowPearlGain(null), 2500);
+    showBubble('哇～珍珠！謝謝你撿起來 ✨');
+  };
+
+  const buyFurniture = (furnitureId) => {
+    if (!pet) return;
+    const furn = FURNITURE.find(f => f.id === furnitureId);
+    if (!furn) return;
+    const ageYears = getPetAgeYears(pet.createdAt);
+    if (ageYears < furn.unlockAge) {
+      setShopError(`要等 ${pet.name} ${furn.unlockAge} 歲才能解鎖喔～`);
+      setTimeout(() => setShopError(null), 2500);
+      return;
+    }
+    if (pet.owned.furniture.includes(furnitureId)) {
+      setShopError('已經擁有這個家具囉！');
+      setTimeout(() => setShopError(null), 2500);
+      return;
+    }
+    if (pet.pearls < furn.pearlCost) {
+      setShopError(`珍珠不夠～還差 ${furn.pearlCost - pet.pearls} 顆`);
+      setTimeout(() => setShopError(null), 2500);
+      return;
+    }
+    setPet(p => ({
+      ...p,
+      pearls: p.pearls - furn.pearlCost,
+      owned: { ...p.owned, furniture: [...p.owned.furniture, furnitureId] }
+    }));
+    playPurchaseSound();
+    setShopFlash({ id: furnitureId, key: Date.now() });
+    setTimeout(() => setShopFlash(null), 1500);
+  };
+
   const feedFruit = (fruitId) => {
     if (!pet || (pet.fruits[fruitId] || 0) <= 0) return;
     const fruit = FRUITS.find(f => f.id === fruitId);
-
     setPet(p => {
       const newFruits = { ...p.fruits, [fruitId]: p.fruits[fruitId] - 1 };
       let newXp = p.xp + 1;
@@ -545,12 +619,10 @@ export default function App() {
       }
       return { ...p, fruits: newFruits, xp: newXp, level: newLevel };
     });
-
     playNomSound();
     setPetAnimKey(k => k + 1);
     setPetHearts(h => h + 1);
     setTimeout(() => setPetHearts(h => Math.max(0, h - 1)), 2000);
-
     const eatMsgs = ['好好吃喔～', `${fruit.name}最棒了！`, '嚼嚼嚼...', '謝謝你 💗', '好幸福 ✨'];
     showBubble(eatMsgs[Math.floor(Math.random() * eatMsgs.length)]);
     setShowFruitPicker(false);
@@ -570,43 +642,34 @@ export default function App() {
     setShowPetMenu(false);
   };
 
-  // Anniversary reward claim
   const claimReward = (choice) => {
-    if (!anniversaryReward || !pet) return;
+    playRewardSound();
     setPet(p => {
-      const updates = { ...p, anniversariesClaimed: [...(p.anniversariesClaimed || []), anniversaryReward.age] };
-      if (choice.type === 'background') {
-        updates.unlockedBackgrounds = [...new Set([...p.unlockedBackgrounds, choice.id])];
-      } else {
-        updates.unlockedFurniture = [...new Set([...p.unlockedFurniture, choice.id])];
-      }
-      return updates;
+      const owned = { ...p.owned };
+      if (choice.type === 'furniture') owned.furniture = [...owned.furniture, choice.id];
+      else owned.backgrounds = [...owned.backgrounds, choice.id];
+      return { ...p, owned, claimedRewards: [...p.claimedRewards, pendingReward.age] };
     });
-    playDingSound();
-    setAnniversaryReward(null);
-    showBubble(`謝謝你～${pet.name}長大了！`);
+    setPendingReward(null);
   };
 
-  // Room: place / remove furniture
-  const placeFurniture = (id, x, y) => {
-    if (!pet) return;
-    setPet(p => ({
-      ...p,
-      roomItems: [...(p.roomItems || []), { uniq: Date.now() + Math.random(), id, x, y }]
-    }));
+  const addRoomItem = (furnitureId) => {
+    const item = {
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+      furnitureId,
+      x: 30 + Math.random() * 40,
+      y: 50 + Math.random() * 30,
+    };
+    setPet(p => ({ ...p, roomItems: [...p.roomItems, item] }));
   };
-
-  const removeRoomItem = (uniq) => {
-    if (!pet) return;
-    setPet(p => ({
-      ...p,
-      roomItems: (p.roomItems || []).filter(i => i.uniq !== uniq)
-    }));
+  const removeRoomItem = (itemId) => {
+    setPet(p => ({ ...p, roomItems: p.roomItems.filter(i => i.id !== itemId) }));
   };
-
+  const moveRoomItem = (itemId, x, y) => {
+    setPet(p => ({ ...p, roomItems: p.roomItems.map(i => i.id === itemId ? { ...i, x, y } : i) }));
+  };
   const setBackground = (bgId) => {
-    if (!pet) return;
-    setPet(p => ({ ...p, currentBackground: bgId }));
+    setPet(p => ({ ...p, currentBg: bgId }));
   };
 
   const todayChecks = history[todayKey()] || {};
@@ -615,8 +678,6 @@ export default function App() {
 
   const now = new Date();
   const isBedtime = ((now.getHours() === 23 && now.getMinutes() >= 30) || now.getHours() === 0) && !allDoneToday && tasks.length > 0;
-
-  const todayFruitCount = dailyFruitCount.date === todayKey() ? dailyFruitCount.count : 0;
 
   if (loading) {
     return (
@@ -632,6 +693,7 @@ export default function App() {
   }
 
   const totalFruits = pet ? Object.values(pet.fruits).reduce((s, v) => s + v, 0) : 0;
+  const todayFruitCount = pet && pet.dailyFruits.date === todayKey() ? pet.dailyFruits.count : 0;
 
   return (
     <div style={{
@@ -659,8 +721,12 @@ export default function App() {
         @keyframes fruitGain { 0%{opacity:0; transform:translateX(-50%) translateY(20px) scale(0.5)} 20%{opacity:1; transform:translateX(-50%) translateY(0) scale(1.2)} 80%{opacity:1; transform:translateX(-50%) translateY(-10px) scale(1)} 100%{opacity:0; transform:translateX(-50%) translateY(-40px) scale(0.9)} }
         @keyframes levelUpRing { 0%{transform:translate(-50%,-50%) scale(0); opacity:1} 100%{transform:translate(-50%,-50%) scale(3); opacity:0} }
         @keyframes levelUpText { 0%{opacity:0; transform:translate(-50%,-50%) scale(0.5)} 30%{opacity:1; transform:translate(-50%,-50%) scale(1.2)} 70%{opacity:1; transform:translate(-50%,-50%) scale(1)} 100%{opacity:0; transform:translate(-50%,-100%) scale(0.9)} }
-        @keyframes anniversaryGlow { 0%,100%{box-shadow:0 0 30px rgba(255,158,199,0.6),0 0 60px rgba(196,77,255,0.4)} 50%{box-shadow:0 0 50px rgba(255,158,199,0.9),0 0 80px rgba(196,77,255,0.6)} }
-        @keyframes giftBob { 0%,100%{transform:translateY(0) rotate(-5deg)} 50%{transform:translateY(-8px) rotate(5deg)} }
+        @keyframes giftBounce { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-15px) rotate(-5deg)} }
+        @keyframes sparkleSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+        @keyframes pearlPulse { 0%,100%{transform:translate(-50%,-50%) scale(1); filter:drop-shadow(0 0 8px rgba(255,255,255,0.9))} 50%{transform:translate(-50%,-50%) scale(1.15); filter:drop-shadow(0 0 16px rgba(255,200,230,1))} }
+        @keyframes pearlAppear { 0%{transform:translate(-50%,-50%) scale(0) rotate(0); opacity:0} 50%{opacity:1} 100%{transform:translate(-50%,-50%) scale(1) rotate(360deg); opacity:1} }
+        @keyframes pearlCollect { 0%{transform:translate(-50%,-50%) scale(1); opacity:1} 100%{transform:translate(-50%,-50%) scale(2.5); opacity:0} }
+        @keyframes shopFlash { 0%,100%{background-color:white} 50%{background-color:#a3e0a3} }
         .candy-btn { transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
         .candy-btn:active { transform: scale(0.95); }
         .task-card { transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
@@ -692,37 +758,39 @@ export default function App() {
       {showFruitGain && (
         <div key={showFruitGain.key} style={{
           position: 'fixed', top: '120px', left: '50%',
-          background: showFruitGain.capped
-            ? 'linear-gradient(135deg, #f0e6ff, #e0d4f0)'
-            : 'linear-gradient(135deg, #fff4e6, #ffe0f0)',
+          background: showFruitGain.capped ? 'linear-gradient(135deg, #e8e0f5, #d4c4ff)' : 'linear-gradient(135deg, #fff4e6, #ffe0f0)',
           border: showFruitGain.capped ? '2px solid #b8a3d4' : '2px solid #ffb3d9',
-          borderRadius: '20px',
-          padding: '12px 20px',
-          fontWeight: 700,
-          color: showFruitGain.capped ? '#7a5a8a' : '#a04060',
-          fontSize: '0.9rem',
-          zIndex: 150,
+          borderRadius: '20px', padding: '12px 20px',
+          fontWeight: 700, color: showFruitGain.capped ? '#7a6b8a' : '#a04060',
+          fontSize: '0.9rem', zIndex: 150,
           boxShadow: '0 8px 24px rgba(255, 158, 199, 0.4)',
           animation: 'fruitGain 2.5s ease-out forwards',
-          display: 'flex', alignItems: 'center', gap: '8px',
-          flexDirection: 'column'
+          display: 'flex', alignItems: 'center', gap: '8px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.6rem' }}>{showFruitGain.emoji}</span>
-            {showFruitGain.capped ? '今日水果上限已達' : `獲得 ${showFruitGain.name} +1！`}
-          </div>
-          {!showFruitGain.capped && showFruitGain.remaining !== undefined && (
-            <div style={{ fontSize: '0.7rem', color: '#a06b8a', fontWeight: 600 }}>
-              今天還能再拿 {showFruitGain.remaining} 顆
-            </div>
-          )}
+          <span style={{ fontSize: '1.5rem' }}>{showFruitGain.emoji}</span>
+          {showFruitGain.capped ? '今日水果已收滿，明天再來～' : `獲得 ${showFruitGain.name} +1！`}
+        </div>
+      )}
+
+      {showPearlGain && (
+        <div key={showPearlGain.key} style={{
+          position: 'fixed', top: '120px', left: '50%',
+          background: 'linear-gradient(135deg, #f0f4ff, #fce4ff)',
+          border: '2px solid #c4a3ff',
+          borderRadius: '20px', padding: '12px 20px',
+          fontWeight: 700, color: '#6b4a7a',
+          fontSize: '0.9rem', zIndex: 150,
+          boxShadow: '0 8px 24px rgba(196, 163, 255, 0.5)',
+          animation: 'fruitGain 2.5s ease-out forwards',
+          display: 'flex', alignItems: 'center', gap: '8px'
+        }}>
+          <span style={{ fontSize: '1.5rem' }}>🦪</span>
+          收集到一顆珍珠！
         </div>
       )}
 
       {showLevelUp && (
-        <div key={showLevelUp.key} style={{
-          position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 180,
-        }}>
+        <div key={showLevelUp.key} style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 180 }}>
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             width: '200px', height: '200px', borderRadius: '50%',
@@ -750,7 +818,8 @@ export default function App() {
 
       <div style={{ padding: '24px 20px 16px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
         <h1 style={{
-          fontFamily: '"Fredoka", sans-serif', fontSize: '2rem', margin: 0,
+          fontFamily: '"Fredoka", sans-serif',
+          fontSize: '2rem', margin: 0,
           background: 'linear-gradient(90deg, #ff6b9d, #c44dff, #6bb5ff)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           backgroundClip: 'text', fontWeight: 700, letterSpacing: '-0.02em'
@@ -764,9 +833,8 @@ export default function App() {
         <div style={{
           margin: '0 20px 16px', padding: '14px 16px',
           background: 'linear-gradient(135deg, #fff4e6, #ffe0ec)',
-          border: '2px dashed #ff9ec7',
-          borderRadius: '20px', fontSize: '0.9rem',
-          color: '#a04060', textAlign: 'center',
+          border: '2px dashed #ff9ec7', borderRadius: '20px',
+          fontSize: '0.9rem', color: '#a04060', textAlign: 'center',
           animation: 'wiggle 2s ease-in-out infinite',
           position: 'relative', zIndex: 2
         }}>🌙 睡前提醒～還有任務沒打勾喔！</div>
@@ -778,9 +846,7 @@ export default function App() {
             <TodayView
               tasks={tasks} todayChecks={todayChecks}
               completedToday={completedToday} allDoneToday={allDoneToday}
-              toggleTask={toggleTask}
-              todayFruitCount={todayFruitCount}
-              hasPet={!!pet}
+              toggleTask={toggleTask} todayFruitCount={todayFruitCount}
             />
             {pet && (
               <PetSection
@@ -788,8 +854,9 @@ export default function App() {
                 showPetMenu={showPetMenu} setShowPetMenu={setShowPetMenu}
                 showFruitPicker={showFruitPicker} setShowFruitPicker={setShowFruitPicker}
                 petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
-                feedFruit={feedFruit} chatWithPet={chatWithPet} renamePet={renamePet}
-                totalFruits={totalFruits}
+                feedFruit={feedFruit} chatWithPet={chatWithPet}
+                renamePet={renamePet} totalFruits={totalFruits}
+                activePearl={activePearl} collectPearl={collectPearl}
               />
             )}
           </>
@@ -797,10 +864,12 @@ export default function App() {
 
         {view === 'room' && pet && (
           <RoomView
-            pet={pet}
-            placeFurniture={placeFurniture}
-            removeRoomItem={removeRoomItem}
-            setBackground={setBackground}
+            pet={pet} setBackground={setBackground}
+            addRoomItem={addRoomItem} removeRoomItem={removeRoomItem}
+            moveRoomItem={moveRoomItem}
+            editingRoom={editingRoom} setEditingRoom={setEditingRoom}
+            draggingItem={draggingItem} setDraggingItem={setDraggingItem}
+            setShowShop={setShowShop}
           />
         )}
 
@@ -808,7 +877,8 @@ export default function App() {
           <DiaryView
             diary={getDiary(todayKey())}
             toggleMood={toggleMood} toggleBody={toggleBody}
-            updateDiary={updateDiary} todayKey={todayKey} playDingSound={playDingSound}
+            updateDiary={updateDiary} todayKey={todayKey}
+            playDingSound={playDingSound}
           />
         )}
 
@@ -824,7 +894,8 @@ export default function App() {
         {view === 'manage' && (
           <ManageView
             tasks={tasks} newTaskName={newTaskName}
-            setNewTaskName={setNewTaskName} addTask={addTask} deleteTask={deleteTask}
+            setNewTaskName={setNewTaskName}
+            addTask={addTask} deleteTask={deleteTask}
           />
         )}
       </div>
@@ -834,14 +905,14 @@ export default function App() {
         background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(20px)',
         borderTop: '2px solid rgba(255, 209, 220, 0.5)',
-        padding: '8px 4px calc(16px + env(safe-area-inset-bottom))',
+        padding: '6px 4px calc(14px + env(safe-area-inset-bottom))',
         display: 'flex', justifyContent: 'space-around',
         zIndex: 50
       }}>
         {[
           { id: 'today', icon: ListTodo, label: '今日' },
-          { id: 'room', icon: HomeIcon, label: '房間' },
           { id: 'diary', icon: BookHeart, label: '日記' },
+          { id: 'room', icon: Home, label: '小窩' },
           { id: 'calendar', icon: CalendarIcon, label: '日曆' },
           { id: 'manage', icon: Sparkles, label: '管理' }
         ].map(item => (
@@ -852,7 +923,7 @@ export default function App() {
               border: 'none',
               background: view === item.id ? 'linear-gradient(135deg, #ff9ec7, #c4a3ff)' : 'transparent',
               color: view === item.id ? 'white' : '#a06b8a',
-              padding: '8px 8px', borderRadius: '14px',
+              padding: '8px 8px', borderRadius: '12px',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
               cursor: 'pointer', fontWeight: 600, fontSize: '0.7rem',
               boxShadow: view === item.id ? '0 4px 12px rgba(255, 158, 199, 0.4)' : 'none'
@@ -928,8 +999,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Anniversary reward modal */}
-      {anniversaryReward && pet && (
+      {pendingReward && pet && (
         <div style={{
           position: 'fixed', inset: 0,
           background: 'rgba(122, 74, 107, 0.5)',
@@ -938,67 +1008,73 @@ export default function App() {
           padding: '20px', zIndex: 250
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #fff0f5, #fce4ff, #e0f0ff)',
-            borderRadius: '28px',
-            padding: '28px 24px',
+            background: 'linear-gradient(135deg, #fff0f5, #fce4ff, #fff4e6)',
+            borderRadius: '28px', padding: '24px 20px',
             maxWidth: '380px', width: '100%',
             border: '3px solid white',
-            animation: 'anniversaryGlow 2s ease-in-out infinite',
-            position: 'relative',
-            textAlign: 'center'
+            boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
+            position: 'relative'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '4px', animation: 'giftBob 1.5s ease-in-out infinite' }}>🎁</div>
-            <h2 style={{
-              margin: '0 0 8px',
-              fontFamily: '"Fredoka", sans-serif',
-              fontSize: '1.4rem',
-              background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}>
-              {pet.name} {anniversaryReward.age} 歲生日！
-            </h2>
-            <p style={{ margin: '0 0 20px', color: '#7a4a6b', fontSize: '0.9rem' }}>
-              選一個禮物給 {pet.name} 吧 ✨
-            </p>
+            <div style={{ position: 'absolute', top: '-8px', left: '20%', fontSize: '1.5rem', animation: 'sparkleSpin 4s linear infinite' }}>✨</div>
+            <div style={{ position: 'absolute', top: '-12px', right: '15%', fontSize: '1.3rem', animation: 'sparkleSpin 3s linear infinite reverse' }}>🌟</div>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '3rem', animation: 'giftBounce 1s ease-in-out infinite' }}>🎁</div>
+              <h2 style={{
+                margin: '8px 0 4px', fontFamily: '"Fredoka", sans-serif',
+                fontSize: '1.4rem',
+                background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+              }}>{pet.name} {pendingReward.age} 歲了！🎉</h2>
+              <p style={{ margin: 0, color: '#a06b8a', fontSize: '0.85rem' }}>選一個禮物吧～</p>
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {anniversaryReward.choices.map((c, i) => (
+              {pendingReward.choices.map((choice, i) => (
                 <button
-                  key={i}
-                  onClick={() => claimReward(c)}
-                  className="candy-btn"
+                  key={i} onClick={() => claimReward(choice)} className="candy-btn"
                   style={{
+                    display: 'flex', alignItems: 'center', gap: '12px',
                     padding: '14px 16px',
-                    borderRadius: '18px',
-                    border: '2px solid rgba(255, 158, 199, 0.5)',
-                    background: c.type === 'background'
-                      ? c.gradient
-                      : 'linear-gradient(135deg, white, #fff5fa)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    fontFamily: 'inherit',
-                    boxShadow: '0 4px 12px rgba(255, 158, 199, 0.2)'
+                    background: 'rgba(255, 255, 255, 0.85)',
+                    border: '2px solid #ffd1dc', borderRadius: '18px',
+                    cursor: 'pointer', fontFamily: 'inherit'
                   }}
                 >
-                  <span style={{ fontSize: c.type === 'background' ? '1.2rem' : '2rem' }}>
-                    {c.type === 'background' ? '🎨' : c.emoji}
-                  </span>
-                  <div style={{ textAlign: 'left', flex: 1 }}>
-                    <div style={{ fontWeight: 700, color: '#5a3a4a', fontSize: '0.95rem' }}>{c.name}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#a06b8a' }}>
-                      {c.type === 'background' ? '解鎖新背景' : '解鎖新家具'}
+                  <div style={{
+                    width: '50px', height: '50px', borderRadius: '12px',
+                    background: choice.type === 'background' ? choice.gradient : 'linear-gradient(135deg, #fff0f5, #fce4ff)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.8rem', flexShrink: 0
+                  }}>
+                    {choice.type === 'furniture' ? choice.emoji : '🖼️'}
+                  </div>
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontWeight: 700, color: '#5a3a4a', fontSize: '0.95rem' }}>
+                      {choice.name}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#a06b8a' }}>
+                      {choice.type === 'furniture' ? '小家具' : '房間背景'}
                     </div>
                   </div>
+                  <Gift size={18} color="#ff6b9d" />
                 </button>
               ))}
             </div>
-            <p style={{ marginTop: '14px', marginBottom: 0, fontSize: '0.72rem', color: '#a06b8a' }}>
-              到「房間」頁面把禮物擺出來吧 🏠
-            </p>
+            <p style={{
+              textAlign: 'center', margin: '14px 0 0',
+              fontSize: '0.72rem', color: '#a06b8a'
+            }}>到「小窩」頁面布置 {pet.name} 的家吧 🏠</p>
           </div>
         </div>
+      )}
+
+      {showShop && pet && (
+        <ShopModal
+          pet={pet}
+          buyFurniture={buyFurniture}
+          shopFlash={shopFlash}
+          shopError={shopError}
+          onClose={() => setShowShop(false)}
+        />
       )}
 
       {showWeeklySummary && weeklyData && (
@@ -1059,6 +1135,139 @@ export default function App() {
   );
 }
 
+function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
+  const ageYears = getPetAgeYears(pet.createdAt);
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(122, 74, 107, 0.5)',
+      backdropFilter: 'blur(10px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '16px', zIndex: 220
+    }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #fff0f5, #fce4ff, #f0e0ff)',
+        borderRadius: '24px', padding: '20px 16px 16px',
+        maxWidth: '420px', width: '100%',
+        maxHeight: '85vh',
+        border: '3px solid white',
+        boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
+        position: 'relative',
+        display: 'flex', flexDirection: 'column'
+      }}>
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: '12px', right: '12px',
+            background: 'rgba(255, 255, 255, 0.8)', border: 'none',
+            width: '30px', height: '30px', borderRadius: '50%',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 5
+          }}
+        ><X size={16} color="#a06b8a" /></button>
+
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <div style={{ fontSize: '1.8rem' }}>🛍️</div>
+          <h2 style={{
+            margin: '4px 0 4px',
+            fontFamily: '"Fredoka", sans-serif',
+            fontSize: '1.2rem',
+            background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+          }}>珍珠商店</h2>
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '4px 12px', borderRadius: '999px',
+            background: 'rgba(255, 255, 255, 0.7)',
+            fontSize: '0.85rem', fontWeight: 700, color: '#7a4a6b'
+          }}>
+            🦪 你有 {pet.pearls || 0} 顆珍珠
+          </div>
+        </div>
+
+        {shopError && (
+          <div style={{
+            padding: '8px 14px', marginBottom: '10px',
+            background: 'rgba(255, 200, 200, 0.7)',
+            border: '2px solid #ff9999',
+            borderRadius: '14px',
+            fontSize: '0.82rem', color: '#a04060',
+            textAlign: 'center', fontWeight: 600
+          }}>{shopError}</div>
+        )}
+
+        <div style={{
+          flex: 1, overflowY: 'auto',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '8px',
+          padding: '4px'
+        }}>
+          {FURNITURE.map(f => {
+            const owned = pet.owned.furniture.includes(f.id);
+            const ageLocked = ageYears < f.unlockAge;
+            const canAfford = pet.pearls >= f.pearlCost;
+            const flashing = shopFlash?.id === f.id;
+            return (
+              <button
+                key={f.id}
+                onClick={() => !owned && !ageLocked && buyFurniture(f.id)}
+                disabled={owned}
+                style={{
+                  padding: '10px 8px',
+                  borderRadius: '14px',
+                  border: '2px solid',
+                  borderColor: owned ? '#a3e0a3' : ageLocked ? 'rgba(200, 200, 200, 0.5)' : '#ffd1dc',
+                  background: owned ? 'rgba(220, 245, 220, 0.6)' : ageLocked ? 'rgba(240, 240, 240, 0.5)' : 'white',
+                  cursor: owned || ageLocked ? 'default' : 'pointer',
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', gap: '4px',
+                  opacity: ageLocked ? 0.5 : 1,
+                  fontFamily: 'inherit',
+                  position: 'relative',
+                  animation: flashing ? 'shopFlash 1.5s ease' : 'none',
+                  transition: 'transform 0.2s'
+                }}
+              >
+                <span style={{ fontSize: '1.8rem' }}>{ageLocked ? '🔒' : f.emoji}</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5a3a4a' }}>
+                  {f.name}
+                </span>
+                {owned ? (
+                  <div style={{
+                    fontSize: '0.65rem', fontWeight: 700, color: '#5a8a5a',
+                    display: 'flex', alignItems: 'center', gap: '2px'
+                  }}>
+                    <Check size={10} strokeWidth={3} /> 已擁有
+                  </div>
+                ) : ageLocked ? (
+                  <div style={{ fontSize: '0.65rem', color: '#a06b8a', fontWeight: 600 }}>
+                    {f.unlockAge} 歲解鎖
+                  </div>
+                ) : (
+                  <div style={{
+                    fontSize: '0.7rem', fontWeight: 700,
+                    color: canAfford ? '#7a4a6b' : '#c089a3',
+                    display: 'flex', alignItems: 'center', gap: '2px'
+                  }}>
+                    🦪 {f.pearlCost}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <p style={{
+          margin: '10px 0 0',
+          fontSize: '0.7rem', color: '#a06b8a',
+          textAlign: 'center'
+        }}>到「小窩」頁面布置買到的家具～</p>
+      </div>
+    </div>
+  );
+}
+
 function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
   const sizeMultiplier = ageYears < 0.5 ? 0.7 : ageYears < 1.5 ? 0.85 : ageYears < 3 ? 0.95 : 1;
   const finalSize = size * sizeMultiplier;
@@ -1067,7 +1276,7 @@ function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
       key={animKey}
       style={{
         width: finalSize, height: finalSize,
-        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 0.8s ease-in-out infinite',
+        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 1.5s ease-in-out infinite',
         display: 'inline-block',
         transform: `scaleX(${facing})`,
         transition: 'transform 0.3s'
@@ -1113,7 +1322,7 @@ function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
   );
 }
 
-function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits }) {
+function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const stage = getPetStage(ageYears);
   const ageDisplay = ageYears < 1 ? `${Math.floor(ageYears * 12)}個月` : `${ageYears.toFixed(1)} 歲`;
@@ -1151,7 +1360,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
             }}>LV {pet.level}</div>
             <div style={{ fontSize: '0.7rem', color: '#a06b8a' }}>
-              🍓 {totalFruits} 顆水果
+              🍓 {totalFruits} · 🦪 {pet.pearls || 0}
             </div>
           </div>
         </div>
@@ -1177,8 +1386,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
         </div>
 
         <div style={{
-          position: 'relative',
-          height: '160px',
+          position: 'relative', height: '160px',
           background: 'linear-gradient(180deg, rgba(255, 240, 245, 0.5), rgba(255, 230, 245, 0.7))',
           borderRadius: '20px',
           border: '2px dashed rgba(255, 158, 199, 0.4)',
@@ -1191,20 +1399,13 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
 
           {petBubble && (
             <div style={{
-              position: 'absolute',
-              top: '8px',
-              left: `${petX}%`,
-              transform: 'translateX(-50%)',
-              background: 'white',
-              padding: '6px 12px',
-              borderRadius: '14px',
-              border: '2px solid #ffd1dc',
+              position: 'absolute', top: '8px',
+              left: `${petX}%`, transform: 'translateX(-50%)',
+              background: 'white', padding: '6px 12px',
+              borderRadius: '14px', border: '2px solid #ffd1dc',
               boxShadow: '0 4px 12px rgba(255, 158, 199, 0.3)',
-              fontSize: '0.78rem',
-              fontWeight: 600,
-              color: '#5a3a4a',
-              whiteSpace: 'nowrap',
-              maxWidth: '180px',
+              fontSize: '0.78rem', fontWeight: 600, color: '#5a3a4a',
+              whiteSpace: 'nowrap', maxWidth: '180px',
               overflow: 'hidden', textOverflow: 'ellipsis',
               zIndex: 10,
               animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
@@ -1213,22 +1414,37 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
 
           {petHearts > 0 && (
             <div style={{
-              position: 'absolute',
-              bottom: '60px',
-              left: `${petX}%`,
-              transform: 'translateX(-50%)',
+              position: 'absolute', bottom: '60px',
+              left: `${petX}%`, transform: 'translateX(-50%)',
               pointerEvents: 'none', zIndex: 5
             }}>
               {[...Array(petHearts)].map((_, i) => (
                 <div key={`${petHearts}-${i}`} style={{
-                  position: 'absolute',
-                  fontSize: '1.2rem',
+                  position: 'absolute', fontSize: '1.2rem',
                   left: `${(i - petHearts / 2) * 16}px`,
                   animation: 'heartFloat 2s ease-out forwards',
                   animationDelay: `${i * 0.1}s`
                 }}>💗</div>
               ))}
             </div>
+          )}
+
+          {/* Active pearl on screen */}
+          {activePearl && (
+            <button
+              key={activePearl.key}
+              onClick={collectPearl}
+              style={{
+                position: 'absolute',
+                left: `${activePearl.x}%`,
+                top: `${activePearl.y}%`,
+                background: 'transparent', border: 'none',
+                cursor: 'pointer', padding: 0,
+                fontSize: '1.8rem', zIndex: 8,
+                animation: 'pearlAppear 0.5s ease-out, pearlPulse 1.5s ease-in-out 0.5s infinite'
+              }}
+              aria-label="撿起珍珠"
+            >🦪</button>
           )}
 
           <button
@@ -1241,14 +1457,16 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
               transition: 'left 1s linear'
             }}
           >
-            <PetSVG size={90} animKey={petAnimKey} ageYears={getPetAgeYears(pet.createdAt)} facing={petDir} />
+            <PetSVG size={90} animKey={petAnimKey} ageYears={ageYears} facing={petDir} />
           </button>
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: '#a06b8a' }}>
-          點 {pet.name} 互動 💕 <button onClick={renamePet} style={{
+          {activePearl ? '✨ 有珍珠！點 🦪 撿起來' : `點 ${pet.name} 互動 💕`}
+          <button onClick={renamePet} style={{
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: '0.7rem', color: '#c089a3', fontFamily: 'inherit'
+            fontSize: '0.7rem', color: '#c089a3', fontFamily: 'inherit',
+            marginLeft: '6px'
           }}>(改名)</button>
         </div>
 
@@ -1260,8 +1478,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           }}>
             <button
               onClick={() => setShowFruitPicker(true)}
-              className="candy-btn"
-              disabled={totalFruits === 0}
+              className="candy-btn" disabled={totalFruits === 0}
               style={{
                 padding: '10px 18px', borderRadius: '999px', border: 'none',
                 background: totalFruits === 0 ? 'rgba(255, 209, 220, 0.5)' : 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
@@ -1346,284 +1563,257 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
   );
 }
 
-function RoomView({ pet, placeFurniture, removeRoomItem, setBackground }) {
-  const [editMode, setEditMode] = useState(false);
-  const [showFurniturePicker, setShowFurniturePicker] = useState(false);
-  const [showBgPicker, setShowBgPicker] = useState(false);
+function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop }) {
+  const ageYears = getPetAgeYears(pet.createdAt);
+  const currentBg = BACKGROUNDS.find(b => b.id === pet.currentBg) || BACKGROUNDS[0];
+  const ownedFurniture = FURNITURE.filter(f => pet.owned.furniture.includes(f.id));
+  const ownedBackgrounds = BACKGROUNDS.filter(b => pet.owned.backgrounds.includes(b.id));
+  const roomRef = useRef(null);
 
-  const bg = FURNITURE_CATALOG.backgrounds.find(b => b.id === pet.currentBackground)
-    || FURNITURE_CATALOG.backgrounds[0];
-
-  // All available furniture (starter + unlocked)
-  const allFurniture = [
-    ...FURNITURE_CATALOG.starter,
-    ...FURNITURE_CATALOG.age1,
-    ...FURNITURE_CATALOG.age2,
-    ...FURNITURE_CATALOG.age3,
-    ...FURNITURE_CATALOG.age5,
-    ...FURNITURE_CATALOG.age10,
-  ];
-  const availableFurniture = allFurniture.filter(f => pet.unlockedFurniture.includes(f.id));
-
-  // Place at random position when adding (since drag is hard on mobile)
-  const handleAddFurniture = (id) => {
-    const x = 15 + Math.random() * 70;
-    const y = 30 + Math.random() * 50;
-    placeFurniture(id, x, y);
-    setShowFurniturePicker(false);
+  const handleRoomTouch = (e) => {
+    if (!editingRoom || !draggingItem) return;
+    e.preventDefault();
+    const rect = roomRef.current.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    const x = ((touch.clientX - rect.left) / rect.width) * 100;
+    const y = ((touch.clientY - rect.top) / rect.height) * 100;
+    moveRoomItem(draggingItem, Math.max(5, Math.min(90, x)), Math.max(5, Math.min(85, y)));
   };
-
-  const findFurniture = (id) => allFurniture.find(f => f.id === id);
+  const handleRoomEnd = () => setDraggingItem(null);
 
   return (
     <div style={{ padding: '0 20px' }}>
-      {/* Header card */}
       <div style={{
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '24px',
-        padding: '16px 20px',
-        marginBottom: '16px',
-        border: '2px solid rgba(255, 255, 255, 0.9)',
-        boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '12px', padding: '0 4px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{
-              margin: 0, fontFamily: '"Fredoka", sans-serif',
-              color: '#7a4a6b', fontSize: '1.1rem'
-            }}>🏠 {pet.name} 的房間</h3>
-            <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: '#a06b8a' }}>
-              {editMode ? '點家具可移除' : '點家具按鈕新增佈置'}
-            </p>
-          </div>
+        <h3 style={{
+          margin: 0, fontFamily: '"Fredoka", sans-serif', color: '#7a4a6b',
+          fontSize: '1.1rem'
+        }}>🏠 {pet.name} 的小窩</h3>
+        <div style={{ display: 'flex', gap: '6px' }}>
           <button
+            onClick={() => setShowShop(true)}
             className="candy-btn"
-            onClick={() => setEditMode(e => !e)}
             style={{
-              padding: '8px 14px',
-              borderRadius: '14px', border: 'none',
-              background: editMode
-                ? 'linear-gradient(135deg, #d4b3ff, #c4a3ff)'
-                : 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+              padding: '8px 12px', borderRadius: '14px', border: 'none',
+              background: 'linear-gradient(135deg, #c4e9ff, #a3c9ff)',
               color: 'white', fontWeight: 700, cursor: 'pointer',
               fontSize: '0.8rem', fontFamily: 'inherit',
-              boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)'
+              boxShadow: '0 4px 12px rgba(107, 181, 255, 0.3)',
+              display: 'flex', alignItems: 'center', gap: '4px'
             }}
           >
-            {editMode ? '完成 ✓' : '編輯'}
+            <ShoppingBag size={14} strokeWidth={2.5} /> 商店 🦪{pet.pearls || 0}
           </button>
+          <button
+            onClick={() => setEditingRoom(e => !e)}
+            className="candy-btn"
+            style={{
+              padding: '8px 12px', borderRadius: '14px', border: 'none',
+              background: editingRoom ? 'linear-gradient(135deg, #a3e0a3, #7fcc7f)' : 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.8rem', fontFamily: 'inherit',
+              boxShadow: '0 4px 12px rgba(255, 158, 199, 0.3)'
+            }}
+          >{editingRoom ? '完成 ✓' : '布置 ✏️'}</button>
         </div>
       </div>
 
-      {/* Room scene */}
-      <div style={{
-        position: 'relative',
-        height: '320px',
-        background: bg.gradient,
-        borderRadius: '24px',
-        border: '3px solid white',
-        boxShadow: '0 8px 24px rgba(255, 158, 199, 0.2)',
-        overflow: 'hidden',
-        marginBottom: '16px'
-      }}>
-        {/* Floor line */}
+      <div
+        ref={roomRef}
+        onTouchMove={handleRoomTouch}
+        onTouchEnd={handleRoomEnd}
+        onMouseMove={editingRoom && draggingItem ? handleRoomTouch : undefined}
+        onMouseUp={handleRoomEnd}
+        style={{
+          position: 'relative',
+          height: '320px',
+          background: currentBg.gradient,
+          borderRadius: '24px',
+          border: '3px solid white',
+          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.2)',
+          overflow: 'hidden',
+          marginBottom: '16px',
+          touchAction: 'none'
+        }}
+      >
         <div style={{
-          position: 'absolute', bottom: '20%', left: 0, right: 0,
-          height: '2px',
-          background: 'rgba(255, 255, 255, 0.4)'
+          position: 'absolute', bottom: '60px', left: 0, right: 0,
+          height: '2px', background: 'rgba(255, 255, 255, 0.5)',
         }} />
-
-        {/* Placed items */}
-        {(pet.roomItems || []).map(item => {
-          const f = findFurniture(item.id);
-          if (!f) return null;
+        <div style={{
+          position: 'absolute',
+          bottom: '15px', left: '50%',
+          transform: 'translateX(-50%)'
+        }}>
+          <PetSVG size={80} animKey={0} ageYears={ageYears} facing={1} />
+        </div>
+        {pet.roomItems.map(item => {
+          const furn = FURNITURE.find(f => f.id === item.furnitureId);
+          if (!furn) return null;
+          const isDragging = draggingItem === item.id;
           return (
-            <button
-              key={item.uniq}
-              onClick={() => editMode && removeRoomItem(item.uniq)}
+            <div
+              key={item.id}
+              onTouchStart={editingRoom ? (e) => { e.stopPropagation(); setDraggingItem(item.id); } : undefined}
+              onMouseDown={editingRoom ? (e) => { e.stopPropagation(); setDraggingItem(item.id); } : undefined}
               style={{
                 position: 'absolute',
                 left: `${item.x}%`, top: `${item.y}%`,
                 transform: 'translate(-50%, -50%)',
-                background: 'transparent', border: 'none',
-                fontSize: '2.2rem', cursor: editMode ? 'pointer' : 'default',
-                padding: 0,
-                filter: editMode ? 'drop-shadow(0 0 6px rgba(255, 100, 100, 0.6))' : 'none',
-                animation: editMode ? 'wiggle 0.5s ease-in-out infinite' : 'none'
+                fontSize: '2.4rem',
+                cursor: editingRoom ? 'move' : 'default',
+                userSelect: 'none',
+                filter: isDragging ? 'drop-shadow(0 4px 8px rgba(255, 107, 157, 0.6))' : 'drop-shadow(0 2px 3px rgba(0, 0, 0, 0.15))',
+                transition: isDragging ? 'none' : 'filter 0.2s',
+                touchAction: 'none'
               }}
-            >{f.emoji}</button>
+            >
+              {furn.emoji}
+              {editingRoom && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeRoomItem(item.id); }}
+                  onTouchEnd={(e) => { e.stopPropagation(); }}
+                  style={{
+                    position: 'absolute', top: '-8px', right: '-8px',
+                    width: '20px', height: '20px',
+                    borderRadius: '50%', border: 'none',
+                    background: '#ff6b9d', color: 'white',
+                    fontSize: '0.7rem', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }}
+                ><X size={12} strokeWidth={3} /></button>
+              )}
+            </div>
           );
         })}
-
-        {/* The pet itself in the room */}
-        <div style={{
-          position: 'absolute',
-          bottom: '15%', left: '50%',
-          transform: 'translateX(-50%)'
-        }}>
-          <PetSVG size={90} animKey={0} ageYears={getPetAgeYears(pet.createdAt)} facing={1} />
-        </div>
-
-        {(pet.roomItems || []).length === 0 && !editMode && (
+        {pet.roomItems.length === 0 && !editingRoom && (
           <div style={{
-            position: 'absolute', top: '20%', left: '50%',
-            transform: 'translateX(-50%)',
-            textAlign: 'center', color: 'rgba(122, 74, 107, 0.7)',
-            fontSize: '0.85rem', fontWeight: 600
+            position: 'absolute', top: '50%', left: '50%',
+            transform: 'translate(-50%, -50%)',
+            color: 'rgba(122, 74, 107, 0.5)',
+            fontSize: '0.85rem', textAlign: 'center', fontWeight: 600
           }}>
-            ✨ 還沒有家具，幫 {pet.name} 佈置房間吧～
+            點「布置」開始裝飾 ✨<br/>或到「商店」買新家具 🛍️
           </div>
         )}
       </div>
 
-      {/* Action buttons */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-        <button
-          className="candy-btn"
-          onClick={() => { setShowFurniturePicker(s => !s); setShowBgPicker(false); }}
-          style={{
-            flex: 1, padding: '12px',
-            borderRadius: '16px', border: 'none',
-            background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
-            color: 'white', fontWeight: 700, cursor: 'pointer',
-            fontSize: '0.9rem', fontFamily: 'inherit',
-            boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-          }}
-        >
-          <Plus size={16} strokeWidth={3} /> 加家具
-        </button>
-        <button
-          className="candy-btn"
-          onClick={() => { setShowBgPicker(s => !s); setShowFurniturePicker(false); }}
-          style={{
-            flex: 1, padding: '12px',
-            borderRadius: '16px', border: 'none',
-            background: 'linear-gradient(135deg, #a3c9ff, #6bb5ff)',
-            color: 'white', fontWeight: 700, cursor: 'pointer',
-            fontSize: '0.9rem', fontFamily: 'inherit',
-            boxShadow: '0 4px 12px rgba(107, 181, 255, 0.4)'
-          }}
-        >🎨 換背景</button>
-      </div>
-
-      {/* Furniture picker */}
-      {showFurniturePicker && (
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '24px',
-          padding: '18px',
-          marginBottom: '16px',
-          border: '2px solid rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)',
-          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-        }}>
-          <h4 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>
-            可用家具 ({availableFurniture.length})
-          </h4>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {availableFurniture.map(f => (
-              <button
-                key={f.id}
-                onClick={() => handleAddFurniture(f.id)}
-                className="candy-btn"
-                style={{
-                  padding: '10px',
-                  borderRadius: '14px',
-                  border: '2px solid #ffd1dc',
-                  background: 'white', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: '4px',
-                  minWidth: '70px', fontFamily: 'inherit'
-                }}
-              >
-                <span style={{ fontSize: '1.8rem' }}>{f.emoji}</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#5a3a4a' }}>{f.name}</span>
-              </button>
-            ))}
+      {editingRoom && (
+        <>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.85)',
+            borderRadius: '18px', padding: '14px',
+            marginBottom: '12px',
+            border: '2px solid rgba(255, 255, 255, 0.9)',
+            boxShadow: '0 4px 12px rgba(255, 158, 199, 0.15)'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: '#7a4a6b', fontWeight: 700, marginBottom: '8px' }}>
+              🖼️ 背景 ({ownedBackgrounds.length}/{BACKGROUNDS.length})
+            </div>
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+              {BACKGROUNDS.map(b => {
+                const owned = pet.owned.backgrounds.includes(b.id);
+                const active = pet.currentBg === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => owned && setBackground(b.id)}
+                    disabled={!owned} className="candy-btn"
+                    style={{
+                      flex: '0 0 auto',
+                      width: '72px', height: '50px',
+                      borderRadius: '12px',
+                      border: active ? '3px solid #ff6b9d' : '2px solid rgba(255, 209, 220, 0.5)',
+                      background: owned ? b.gradient : 'rgba(200, 200, 200, 0.3)',
+                      cursor: owned ? 'pointer' : 'default',
+                      opacity: owned ? 1 : 0.4,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '0.6rem', fontWeight: 700,
+                      color: '#5a3a4a', position: 'relative', padding: '4px'
+                    }}
+                  >
+                    {!owned && <span style={{ fontSize: '0.9rem' }}>🔒 {b.unlockAge}歲</span>}
+                    {owned && b.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <p style={{ marginTop: '10px', marginBottom: 0, fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
-            每次寵物周歲時可以解鎖更多家具 🎁
-          </p>
-        </div>
+
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.85)',
+            borderRadius: '18px', padding: '14px',
+            border: '2px solid rgba(255, 255, 255, 0.9)',
+            boxShadow: '0 4px 12px rgba(255, 158, 199, 0.15)'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: '#7a4a6b', fontWeight: 700, marginBottom: '8px' }}>
+              🪑 家具 ({ownedFurniture.length}/{FURNITURE.length}) — 點一下放進房間
+            </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
+              gap: '8px'
+            }}>
+              {FURNITURE.map(f => {
+                const owned = pet.owned.furniture.includes(f.id);
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => owned && addRoomItem(f.id)}
+                    disabled={!owned} className="candy-btn"
+                    style={{
+                      aspectRatio: '1',
+                      borderRadius: '14px',
+                      border: '2px solid',
+                      borderColor: owned ? '#ffd1dc' : 'rgba(200, 200, 200, 0.3)',
+                      background: owned ? 'white' : 'rgba(240, 240, 240, 0.4)',
+                      cursor: owned ? 'pointer' : 'default',
+                      opacity: owned ? 1 : 0.4,
+                      display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center',
+                      gap: '2px', padding: '4px',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <span style={{ fontSize: '1.5rem' }}>{owned ? f.emoji : '🔒'}</span>
+                    <span style={{ fontSize: '0.55rem', color: '#7a4a6b', fontWeight: 600 }}>
+                      {owned ? f.name : `${f.unlockAge}歲`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{
+              fontSize: '0.7rem', color: '#a06b8a',
+              textAlign: 'center', marginTop: '10px', marginBottom: 0
+            }}>長按家具拖移位置 · 點 ❌ 移除</p>
+          </div>
+        </>
       )}
 
-      {/* Background picker */}
-      {showBgPicker && (
+      {!editingRoom && pet.roomItems.length > 0 && (
         <div style={{
-          background: 'rgba(255, 255, 255, 0.85)',
-          backdropFilter: 'blur(10px)',
-          borderRadius: '24px',
-          padding: '18px',
-          marginBottom: '16px',
-          border: '2px solid rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)',
-          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+          textAlign: 'center', fontSize: '0.78rem',
+          color: '#a06b8a', padding: '8px'
         }}>
-          <h4 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>
-            背景主題
-          </h4>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-            {FURNITURE_CATALOG.backgrounds.map(b => {
-              const unlocked = pet.unlockedBackgrounds.includes(b.id);
-              const active = pet.currentBackground === b.id;
-              return (
-                <button
-                  key={b.id}
-                  onClick={() => unlocked && setBackground(b.id)}
-                  disabled={!unlocked}
-                  className="candy-btn"
-                  style={{
-                    width: '80px', height: '60px',
-                    borderRadius: '14px',
-                    border: active ? '3px solid #ff6b9d' : '2px solid rgba(255, 209, 220, 0.5)',
-                    background: b.gradient,
-                    cursor: unlocked ? 'pointer' : 'default',
-                    opacity: unlocked ? 1 : 0.4,
-                    position: 'relative',
-                    fontFamily: 'inherit',
-                    padding: 0
-                  }}
-                >
-                  <div style={{
-                    position: 'absolute', bottom: '4px', left: 0, right: 0,
-                    fontSize: '0.65rem', fontWeight: 700,
-                    color: b.id === 'starry' ? 'white' : '#5a3a4a'
-                  }}>
-                    {b.name} {!unlocked && '🔒'}
-                  </div>
-                  {active && (
-                    <div style={{
-                      position: 'absolute', top: '4px', right: '4px',
-                      background: 'white', borderRadius: '50%',
-                      width: '18px', height: '18px',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      <Check size={12} color="#ff6b9d" strokeWidth={3} />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          已放置 {pet.roomItems.length} 個小東西 ✨
         </div>
       )}
     </div>
   );
 }
 
-function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTask, todayFruitCount, hasPet }) {
-  const fruitsRemaining = Math.max(0, DAILY_FRUIT_CAP - todayFruitCount);
+function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTask, todayFruitCount }) {
   return (
     <div style={{ padding: '0 20px' }}>
       {tasks.length === 0 ? (
         <div style={{
           background: 'rgba(255, 255, 255, 0.7)',
           backdropFilter: 'blur(10px)',
-          borderRadius: '24px',
-          padding: '40px 24px',
+          borderRadius: '24px', padding: '40px 24px',
           textAlign: 'center',
           border: '2px solid rgba(255, 255, 255, 0.8)',
           boxShadow: '0 8px 32px rgba(255, 158, 199, 0.2)'
@@ -1637,8 +1827,7 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
           <div style={{
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 240, 245, 0.9))',
             backdropFilter: 'blur(10px)',
-            borderRadius: '24px',
-            padding: '20px',
+            borderRadius: '24px', padding: '20px',
             marginBottom: '16px',
             border: '2px solid rgba(255, 255, 255, 0.9)',
             boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
@@ -1658,12 +1847,9 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                 transition: 'width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
               }} />
             </div>
-            {hasPet && (
-              <p style={{ margin: '10px 0 0', fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
-                🍓 今日水果剩餘 <strong style={{ color: '#ff6b9d' }}>{fruitsRemaining}</strong> / {DAILY_FRUIT_CAP} 顆
-                {fruitsRemaining === 0 && ' · 明天再來！'}
-              </p>
-            )}
+            <p style={{ margin: '8px 0 0', fontSize: '0.72rem', color: '#a06b8a', textAlign: 'center' }}>
+              🍓 今日水果 {todayFruitCount}/{DAILY_FRUIT_CAP} 顆 {todayFruitCount >= DAILY_FRUIT_CAP ? '· 已收滿' : ''}
+            </p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1679,10 +1865,12 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                     background: checked
                       ? 'linear-gradient(135deg, rgba(255, 209, 220, 0.95), rgba(196, 169, 255, 0.85))'
                       : 'rgba(255, 255, 255, 0.85)',
-                    backdropFilter: 'blur(10px)', borderRadius: '20px',
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: '20px',
                     border: '2px solid rgba(255, 255, 255, 0.9)',
                     boxShadow: checked ? '0 4px 16px rgba(255, 158, 199, 0.3)' : '0 4px 12px rgba(255, 158, 199, 0.1)',
-                    cursor: 'pointer', opacity: checked ? 0.85 : 1
+                    cursor: 'pointer',
+                    opacity: checked ? 0.85 : 1
                   }}
                 >
                   <div style={{
@@ -1701,7 +1889,8 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
                     flex: 1, fontSize: '1.05rem', fontWeight: 600,
                     color: checked ? '#8b5a7a' : '#5a3a4a',
                     textDecoration: checked ? 'line-through' : 'none',
-                    textDecorationColor: '#ff9ec7', textDecorationThickness: '2px'
+                    textDecorationColor: '#ff9ec7',
+                    textDecorationThickness: '2px'
                   }}>{task.name}</span>
                 </div>
               );
@@ -1748,8 +1937,7 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
     const val = moodInput.trim();
     const today = todayKey();
     updateDiary(today, d => ({
-      ...d,
-      moodsCustom: d.moodsCustom.includes(val) ? d.moodsCustom : [...d.moodsCustom, val]
+      ...d, moodsCustom: d.moodsCustom.includes(val) ? d.moodsCustom : [...d.moodsCustom, val]
     }));
     setMoodInput(''); playDingSound(); flashSaved('mood');
   };
@@ -1762,8 +1950,7 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
     const val = bodyInput.trim();
     const today = todayKey();
     updateDiary(today, d => ({
-      ...d,
-      bodyCustom: d.bodyCustom.includes(val) ? d.bodyCustom : [...d.bodyCustom, val]
+      ...d, bodyCustom: d.bodyCustom.includes(val) ? d.bodyCustom : [...d.bodyCustom, val]
     }));
     setBodyInput(''); playDingSound(); flashSaved('body');
   };
@@ -1780,16 +1967,11 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
   const sectionStyle = {
     background: 'rgba(255, 255, 255, 0.85)',
     backdropFilter: 'blur(10px)',
-    borderRadius: '24px',
-    padding: '20px',
-    marginBottom: '16px',
+    borderRadius: '24px', padding: '20px', marginBottom: '16px',
     border: '2px solid rgba(255, 255, 255, 0.9)',
     boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
   };
-  const sectionTitle = {
-    margin: '0 0 14px', color: '#7a4a6b',
-    fontFamily: '"Fredoka", sans-serif', fontSize: '1.1rem'
-  };
+  const sectionTitle = { margin: '0 0 14px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif', fontSize: '1.1rem' };
 
   const SaveBtn = ({ onClick, savedFlash }) => (
     <button
@@ -1925,15 +2107,14 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
   return (
     <div style={{ padding: '0 20px' }}>
       <div style={{
-        background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)',
-        borderRadius: '24px', padding: '20px', marginBottom: '16px',
+        background: 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '24px', padding: '20px',
+        marginBottom: '16px',
         border: '2px solid rgba(255, 255, 255, 0.9)',
         boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
       }}>
         <h3 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>✨ 新增任務</h3>
-        <p style={{ margin: '-8px 0 12px', fontSize: '0.72rem', color: '#a06b8a' }}>
-          💡 每天最多獲得 5 顆水果，超過 5 個任務也只算 5 顆
-        </p>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text" value={newTaskName}
@@ -1957,6 +2138,9 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
             }}
           ><Plus size={18} strokeWidth={3} /></button>
         </div>
+        <p style={{ margin: '8px 0 0', fontSize: '0.7rem', color: '#a06b8a', textAlign: 'center' }}>
+          💡 完成任務可獲得水果（每天最多 5 顆）
+        </p>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {tasks.map(task => (
@@ -1970,7 +2154,8 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
             <span style={{ fontSize: '1.4rem' }}>{task.emoji}</span>
             <span style={{ flex: 1, fontWeight: 600, color: '#5a3a4a' }}>{task.name}</span>
             <button
-              className="candy-btn" onClick={() => deleteTask(task.id)}
+              className="candy-btn"
+              onClick={() => deleteTask(task.id)}
               style={{
                 width: '34px', height: '34px', borderRadius: '50%', border: 'none',
                 background: 'rgba(255, 200, 220, 0.5)', color: '#d4587a',
@@ -1994,6 +2179,7 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
   const daysInMonth = new Date(year, m + 1, 0).getDate();
   const monthNames = ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月'];
   const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
   const cells = [];
   for (let i = 0; i < firstDay; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
@@ -2010,7 +2196,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
            (d.moodsCustom?.length > 0) || (d.bodyCustom?.length > 0) ||
            (d.text?.trim().length > 0);
   };
-
   const moodById = (id) => MOOD_OPTIONS.find(m => m.id === id);
   const bodyById = (id) => BODY_OPTIONS.find(b => b.id === id);
 
@@ -2035,13 +2220,11 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}><ChevronRight size={18} color="#a06b8a" /></button>
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '6px' }}>
           {weekDays.map(d => (
             <div key={d} style={{ textAlign: 'center', fontSize: '0.75rem', color: '#c089a3', fontWeight: 600 }}>{d}</div>
           ))}
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
           {cells.map((d, i) => {
             if (d === null) return <div key={i} />;
@@ -2053,12 +2236,10 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             const isToday = k === todayStr;
             const isSelected = k === selectedKey;
             const hasDiary = hasDiaryEntry(k);
-
             let bg = 'transparent';
             if (ratio === 1 && tasks.length > 0) bg = 'linear-gradient(135deg, #ff9ec7, #c4a3ff)';
             else if (ratio >= 0.5) bg = 'linear-gradient(135deg, #ffd1dc, #d4b3ff)';
             else if (ratio > 0) bg = 'rgba(255, 209, 220, 0.5)';
-
             return (
               <button key={i} onClick={() => setSelectedDate(cellDate)} style={{
                 aspectRatio: '1',
@@ -2071,9 +2252,7 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
               }}>
                 {d}
                 {tasks.length > 0 && completed > 0 && (
-                  <div style={{ fontSize: '0.6rem', marginTop: '1px', opacity: 0.8 }}>
-                    {completed}/{tasks.length}
-                  </div>
+                  <div style={{ fontSize: '0.6rem', marginTop: '1px', opacity: 0.8 }}>{completed}/{tasks.length}</div>
                 )}
                 {hasDiary && (
                   <div style={{ position: 'absolute', bottom: '3px', right: '4px', fontSize: '0.5rem' }}>📖</div>
@@ -2094,7 +2273,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
           <h4 style={{ margin: '0 0 12px', color: '#7a4a6b', fontFamily: '"Fredoka", sans-serif' }}>
             {selectedDate.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' })}
           </h4>
-
           {tasks.length > 0 && (
             <>
               <div style={{ fontSize: '0.85rem', color: '#a06b8a', fontWeight: 700, marginBottom: '8px' }}>✓ 任務</div>
@@ -2117,7 +2295,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
               </div>
             </>
           )}
-
           {selectedDiary && (selectedDiary.moods?.length > 0 || selectedDiary.moodsCustom?.length > 0) && (
             <>
               <div style={{ fontSize: '0.85rem', color: '#a06b8a', fontWeight: 700, marginBottom: '8px' }}>💭 心情</div>
@@ -2125,13 +2302,11 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                 {selectedDiary.moods?.map(id => {
                   const m = moodById(id);
                   if (!m) return null;
-                  return (
-                    <span key={id} style={{
-                      padding: '6px 12px', borderRadius: '999px',
-                      background: `${m.color}30`, border: `2px solid ${m.color}`,
-                      fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
-                    }}>{m.emoji} {m.label}</span>
-                  );
+                  return (<span key={id} style={{
+                    padding: '6px 12px', borderRadius: '999px',
+                    background: `${m.color}30`, border: `2px solid ${m.color}`,
+                    fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
+                  }}>{m.emoji} {m.label}</span>);
                 })}
                 {selectedDiary.moodsCustom?.map((c, i) => (
                   <span key={`mc${i}`} style={{
@@ -2143,7 +2318,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
               </div>
             </>
           )}
-
           {selectedDiary && (selectedDiary.body?.length > 0 || selectedDiary.bodyCustom?.length > 0) && (
             <>
               <div style={{ fontSize: '0.85rem', color: '#a06b8a', fontWeight: 700, marginBottom: '8px' }}>🌿 身體</div>
@@ -2151,13 +2325,11 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                 {selectedDiary.body?.map(id => {
                   const b = bodyById(id);
                   if (!b) return null;
-                  return (
-                    <span key={id} style={{
-                      padding: '6px 12px', borderRadius: '999px',
-                      background: `${b.color}30`, border: `2px solid ${b.color}`,
-                      fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
-                    }}>{b.emoji} {b.label}</span>
-                  );
+                  return (<span key={id} style={{
+                    padding: '6px 12px', borderRadius: '999px',
+                    background: `${b.color}30`, border: `2px solid ${b.color}`,
+                    fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
+                  }}>{b.emoji} {b.label}</span>);
                 })}
                 {selectedDiary.bodyCustom?.map((c, i) => (
                   <span key={`bc${i}`} style={{
@@ -2169,7 +2341,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
               </div>
             </>
           )}
-
           {selectedDiary && selectedDiary.text && selectedDiary.text.trim() && (
             <>
               <div style={{ fontSize: '0.85rem', color: '#a06b8a', fontWeight: 700, marginBottom: '8px' }}>📝 日記</div>
@@ -2180,7 +2351,6 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
               }}>{selectedDiary.text}</div>
             </>
           )}
-
           {tasks.length === 0 && !selectedDiary && (
             <p style={{ color: '#c089a3', margin: 0 }}>那天沒有紀錄 ☁️</p>
           )}
