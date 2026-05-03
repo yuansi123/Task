@@ -79,42 +79,57 @@ const PET_ENCOURAGEMENTS = [
 ];
 
 const FURNITURE = [
-  { id: 'sofa', emoji: '🛋️', name: '小沙發', unlockAge: 1, pearlCost: 8 },
-  { id: 'lamp', emoji: '💡', name: '小檯燈', unlockAge: 1, pearlCost: 8 },
-  { id: 'plant', emoji: '🪴', name: '盆栽', unlockAge: 1, pearlCost: 3 },
-  { id: 'teddy', emoji: '🧸', name: '泰迪熊', unlockAge: 1, pearlCost: 8 },
-  { id: 'cake', emoji: '🎂', name: '生日蛋糕', unlockAge: 1, pearlCost: 5 },
-  { id: 'balloon', emoji: '🎈', name: '氣球', unlockAge: 1, pearlCost: 3 },
-  { id: 'candle', emoji: '🕯️', name: '蠟燭', unlockAge: 1, pearlCost: 3 },
+  { id: 'sofa', emoji: '🛋️', name: '小沙發', unlockAge: 0, pearlCost: 8 },
+  { id: 'lamp', emoji: '💡', name: '小檯燈', unlockAge: 0, pearlCost: 8 },
+  { id: 'plant', emoji: '🪴', name: '盆栽', unlockAge: 0, pearlCost: 3 },
+  { id: 'teddy', emoji: '🧸', name: '泰迪熊', unlockAge: 0, pearlCost: 8 },
+  { id: 'cake', emoji: '🎂', name: '生日蛋糕', unlockAge: 0, pearlCost: 5 },
+  { id: 'balloon', emoji: '🎈', name: '氣球', unlockAge: 0, pearlCost: 3 },
+  { id: 'candle', emoji: '🕯️', name: '蠟燭', unlockAge: 0, pearlCost: 3 },
+  { id: 'mirror', emoji: '🪞', name: '小鏡子', unlockAge: 0, pearlCost: 8 },
+  { id: 'clock', emoji: '⏰', name: '鬧鐘', unlockAge: 0, pearlCost: 8 },
   { id: 'bed', emoji: '🛏️', name: '小床', unlockAge: 3, pearlCost: 20 },
   { id: 'tv', emoji: '📺', name: '電視', unlockAge: 3, pearlCost: 20 },
   { id: 'cactus', emoji: '🌵', name: '仙人掌', unlockAge: 3, pearlCost: 5 },
-  { id: 'mirror', emoji: '🪞', name: '小鏡子', unlockAge: 3, pearlCost: 8 },
-  { id: 'clock', emoji: '⏰', name: '鬧鐘', unlockAge: 3, pearlCost: 8 },
   { id: 'flowers', emoji: '💐', name: '花束', unlockAge: 3, pearlCost: 5 },
-  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 5, pearlCost: 30 },
-  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 5, pearlCost: 20 },
+  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 3, pearlCost: 30 },
+  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 3, pearlCost: 20 },
+  { id: 'icecream', emoji: '🍦', name: '冰淇淋車', unlockAge: 3, pearlCost: 20 },
+  { id: 'rainbow', emoji: '🌈', name: '小彩虹', unlockAge: 3, pearlCost: 20 },
   { id: 'cat', emoji: '🐱', name: '小貓朋友', unlockAge: 5, pearlCost: 30 },
   { id: 'rabbit', emoji: '🐰', name: '兔兔朋友', unlockAge: 5, pearlCost: 30 },
-  { id: 'icecream', emoji: '🍦', name: '冰淇淋車', unlockAge: 5, pearlCost: 20 },
-  { id: 'rainbow', emoji: '🌈', name: '小彩虹', unlockAge: 5, pearlCost: 20 },
+  { id: 'star', emoji: '⭐', name: '星星', unlockAge: 5, pearlCost: 30 },
   { id: 'unicorn', emoji: '🦄', name: '獨角獸', unlockAge: 10, pearlCost: 50 },
   { id: 'crown', emoji: '👑', name: '皇冠', unlockAge: 10, pearlCost: 50 },
-  { id: 'star', emoji: '⭐', name: '星星', unlockAge: 10, pearlCost: 30 },
   { id: 'rocket', emoji: '🚀', name: '小火箭', unlockAge: 10, pearlCost: 50 },
   { id: 'dragon', emoji: '🐉', name: '小龍', unlockAge: 10, pearlCost: 50 },
   { id: 'castle', emoji: '🏰', name: '城堡', unlockAge: 10, pearlCost: 50 },
 ];
 
 const BACKGROUNDS = [
-  { id: 'pink', name: '粉粉樂園', gradient: 'linear-gradient(180deg, #fff0f5 0%, #ffe4ec 100%)', unlockAge: 0 },
-  { id: 'sky', name: '天空之城', gradient: 'linear-gradient(180deg, #c4e9ff 0%, #fff0f5 100%)', unlockAge: 1 },
-  { id: 'mint', name: '薄荷花園', gradient: 'linear-gradient(180deg, #e0f5ee 0%, #fff5e6 100%)', unlockAge: 3 },
-  { id: 'lavender', name: '薰衣草夢', gradient: 'linear-gradient(180deg, #e0d4f5 0%, #ffe4f0 100%)', unlockAge: 5 },
-  { id: 'sunset', name: '黃昏星空', gradient: 'linear-gradient(180deg, #f5d4e8 0%, #d4a3ff 50%, #6b8be0 100%)', unlockAge: 10 },
+  { id: 'pink', name: '粉粉樂園', gradient: 'linear-gradient(180deg, #fff0f5 0%, #ffe4ec 100%)', unlockAge: 0, pearlCost: 0 },
+  { id: 'sky', name: '天空之城', gradient: 'linear-gradient(180deg, #c4e9ff 0%, #fff0f5 100%)', unlockAge: 0, pearlCost: 15 },
+  { id: 'mint', name: '薄荷花園', gradient: 'linear-gradient(180deg, #e0f5ee 0%, #fff5e6 100%)', unlockAge: 0, pearlCost: 25 },
+  { id: 'lavender', name: '薰衣草夢', gradient: 'linear-gradient(180deg, #e0d4f5 0%, #ffe4f0 100%)', unlockAge: 3, pearlCost: 40 },
+  { id: 'sunset', name: '黃昏星空', gradient: 'linear-gradient(180deg, #f5d4e8 0%, #d4a3ff 50%, #6b8be0 100%)', unlockAge: 10, pearlCost: 80 },
 ];
 
 const REWARD_AGES = [1, 3, 5, 10];
+
+const SUGGESTED_TASKS = [
+  { name: '喝水 2000cc', emoji: '💧' },
+  { name: '運動 30 分鐘', emoji: '🏃' },
+  { name: '感謝三件事', emoji: '🙏' },
+  { name: '學習語言 20 分鐘', emoji: '📚' },
+  { name: '閱讀 30 分鐘', emoji: '📖' },
+  { name: '冥想 10 分鐘', emoji: '🧘' },
+  { name: '吃一份蔬果', emoji: '🍎' },
+  { name: '11 點前睡覺', emoji: '😴' },
+  { name: '曬太陽 10 分鐘', emoji: '☀️' },
+  { name: '寫日記', emoji: '📝' },
+  { name: '走 8000 步', emoji: '🚶' },
+  { name: '保養皮膚', emoji: '🧴' },
+];
 
 function pickFruit() {
   const total = FRUITS.reduce((s, f) => s + f.weight, 0);
@@ -626,6 +641,15 @@ export default function App() {
     setTasks(prev => [...prev, { id: Date.now().toString(), name: newTaskName.trim(), emoji }]);
     setNewTaskName('');
   };
+  const addSuggestedTask = (suggestion) => {
+    if (tasks.some(t => t.name === suggestion.name)) return;
+    setTasks(prev => [...prev, {
+      id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+      name: suggestion.name,
+      emoji: suggestion.emoji
+    }]);
+    playDingSound();
+  };
   const deleteTask = (id) => setTasks(prev => prev.filter(t => t.id !== id));
 
   const getDiary = (key) => diaries[key] || { moods: [], moodsCustom: [], body: [], bodyCustom: [], text: '' };
@@ -716,6 +740,36 @@ export default function App() {
     setTimeout(() => setShopFlash(null), 1500);
   };
 
+  const buyBackground = (bgId) => {
+    if (!pet) return;
+    const bg = BACKGROUNDS.find(b => b.id === bgId);
+    if (!bg) return;
+    const ageYears = getPetAgeYears(pet.createdAt);
+    if (ageYears < bg.unlockAge) {
+      setShopError(`要等 ${pet.name} ${bg.unlockAge} 歲才能解鎖喔～`);
+      setTimeout(() => setShopError(null), 2500);
+      return;
+    }
+    if (pet.owned.backgrounds.includes(bgId)) {
+      setShopError('已經擁有這個背景囉！');
+      setTimeout(() => setShopError(null), 2500);
+      return;
+    }
+    if (pet.pearls < bg.pearlCost) {
+      setShopError(`珍珠不夠～還差 ${bg.pearlCost - pet.pearls} 顆`);
+      setTimeout(() => setShopError(null), 2500);
+      return;
+    }
+    setPet(p => ({
+      ...p,
+      pearls: p.pearls - bg.pearlCost,
+      owned: { ...p.owned, backgrounds: [...p.owned.backgrounds, bgId] }
+    }));
+    playPurchaseSound();
+    setShopFlash({ id: bgId, key: Date.now() });
+    setTimeout(() => setShopFlash(null), 1500);
+  };
+
   const feedFruit = (fruitId) => {
     if (!pet || (pet.fruits[fruitId] || 0) <= 0) return;
     const fruit = FRUITS.find(f => f.id === fruitId);
@@ -789,6 +843,40 @@ export default function App() {
   };
   const setBackground = (bgId) => {
     setPet(p => ({ ...p, currentBg: bgId }));
+  };
+
+  // Manual: call pet home (from outdoor to indoor)
+  const callPetHome = () => {
+    if (petLocation === 'indoor' || petTransition) return;
+    setPetTransition('entering');
+    setPetDir(1);
+    const walkInterval = setInterval(() => {
+      setPetX(x => {
+        if (x >= 75) {
+          clearInterval(walkInterval);
+          setTimeout(() => {
+            setPetLocation('indoor');
+            setPetX(50);
+            setPetDir(Math.random() < 0.5 ? -1 : 1);
+            setPetTransition(null);
+          }, 400);
+          return 78;
+        }
+        return x + 2; // faster walk when called
+      });
+    }, 80);
+  };
+
+  // Manual: send pet outside (from indoor to outdoor)
+  const sendPetOutside = () => {
+    if (petLocation === 'outdoor' || petTransition) return;
+    setPetTransition('leaving');
+    setTimeout(() => {
+      setPetLocation('outdoor');
+      setPetX(75);
+      setPetDir(-1);
+      setPetTransition(null);
+    }, 600);
   };
 
   const todayChecks = history[todayKey()] || {};
@@ -1000,6 +1088,7 @@ export default function App() {
             feedFruit={feedFruit} chatWithPet={chatWithPet}
             renamePet={renamePet} totalFruits={totalFruits}
             activePearl={activePearl} collectPearl={collectPearl}
+            callPetHome={callPetHome}
           />
         )}
 
@@ -1026,6 +1115,7 @@ export default function App() {
             tasks={tasks} newTaskName={newTaskName}
             setNewTaskName={setNewTaskName}
             addTask={addTask} deleteTask={deleteTask}
+            addSuggestedTask={addSuggestedTask}
           />
         )}
       </div>
@@ -1197,7 +1287,7 @@ export default function App() {
 
       {showShop && pet && (
         <ShopModal
-          pet={pet} buyFurniture={buyFurniture}
+          pet={pet} buyFurniture={buyFurniture} buyBackground={buyBackground}
           shopFlash={shopFlash} shopError={shopError}
           onClose={() => setShowShop(false)}
         />
@@ -1261,7 +1351,8 @@ export default function App() {
   );
 }
 
-function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
+function ShopModal({ pet, buyFurniture, buyBackground, shopFlash, shopError, onClose }) {
+  const [tab, setTab] = useState('furniture');
   const ageYears = getPetAgeYears(pet.createdAt);
   return (
     <div style={{
@@ -1311,6 +1402,34 @@ function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', gap: '6px', marginBottom: '10px',
+          padding: '4px', background: 'rgba(255, 255, 255, 0.4)',
+          borderRadius: '12px'
+        }}>
+          <button
+            onClick={() => setTab('furniture')}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
+              background: tab === 'furniture' ? 'white' : 'transparent',
+              color: '#5a3a4a', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.85rem', fontFamily: 'inherit',
+              boxShadow: tab === 'furniture' ? '0 2px 8px rgba(255, 158, 199, 0.3)' : 'none'
+            }}
+          >🪑 家具</button>
+          <button
+            onClick={() => setTab('background')}
+            style={{
+              flex: 1, padding: '8px', borderRadius: '10px', border: 'none',
+              background: tab === 'background' ? 'white' : 'transparent',
+              color: '#5a3a4a', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.85rem', fontFamily: 'inherit',
+              boxShadow: tab === 'background' ? '0 2px 8px rgba(255, 158, 199, 0.3)' : 'none'
+            }}
+          >🖼️ 背景</button>
+        </div>
+
         {shopError && (
           <div style={{
             padding: '8px 14px', marginBottom: '10px',
@@ -1322,68 +1441,138 @@ function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
           }}>{shopError}</div>
         )}
 
-        <div style={{
-          flex: 1, overflowY: 'auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '8px',
-          padding: '4px'
-        }}>
-          {FURNITURE.map(f => {
-            const owned = pet.owned.furniture.includes(f.id);
-            const ageLocked = ageYears < f.unlockAge;
-            const canAfford = pet.pearls >= f.pearlCost;
-            const flashing = shopFlash?.id === f.id;
-            return (
-              <button
-                key={f.id}
-                onClick={() => !owned && !ageLocked && buyFurniture(f.id)}
-                disabled={owned}
-                style={{
-                  padding: '10px 8px',
-                  borderRadius: '14px',
-                  border: '2px solid',
-                  borderColor: owned ? '#a3e0a3' : ageLocked ? 'rgba(200, 200, 200, 0.5)' : '#ffd1dc',
-                  background: owned ? 'rgba(220, 245, 220, 0.6)' : ageLocked ? 'rgba(240, 240, 240, 0.5)' : 'white',
-                  cursor: owned || ageLocked ? 'default' : 'pointer',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: '4px',
-                  opacity: ageLocked ? 0.5 : 1,
-                  fontFamily: 'inherit',
-                  position: 'relative',
-                  animation: flashing ? 'shopFlash 1.5s ease' : 'none'
-                }}
-              >
-                <span style={{ fontSize: '1.8rem' }}>{ageLocked ? '🔒' : f.emoji}</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5a3a4a' }}>{f.name}</span>
-                {owned ? (
+        {tab === 'furniture' && (
+          <div style={{
+            flex: 1, overflowY: 'auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '8px',
+            padding: '4px'
+          }}>
+            {FURNITURE.map(f => {
+              const owned = pet.owned.furniture.includes(f.id);
+              const ageLocked = ageYears < f.unlockAge;
+              const canAfford = pet.pearls >= f.pearlCost;
+              const flashing = shopFlash?.id === f.id;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => !owned && !ageLocked && buyFurniture(f.id)}
+                  disabled={owned}
+                  style={{
+                    padding: '10px 8px',
+                    borderRadius: '14px',
+                    border: '2px solid',
+                    borderColor: owned ? '#a3e0a3' : ageLocked ? 'rgba(200, 200, 200, 0.5)' : '#ffd1dc',
+                    background: owned ? 'rgba(220, 245, 220, 0.6)' : ageLocked ? 'rgba(240, 240, 240, 0.5)' : 'white',
+                    cursor: owned || ageLocked ? 'default' : 'pointer',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', gap: '4px',
+                    opacity: ageLocked ? 0.5 : 1,
+                    fontFamily: 'inherit',
+                    position: 'relative',
+                    animation: flashing ? 'shopFlash 1.5s ease' : 'none'
+                  }}
+                >
+                  <span style={{ fontSize: '1.8rem' }}>{ageLocked ? '🔒' : f.emoji}</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5a3a4a' }}>{f.name}</span>
+                  {owned ? (
+                    <div style={{
+                      fontSize: '0.65rem', fontWeight: 700, color: '#5a8a5a',
+                      display: 'flex', alignItems: 'center', gap: '2px'
+                    }}><Check size={10} strokeWidth={3} /> 已擁有</div>
+                  ) : ageLocked ? (
+                    <div style={{ fontSize: '0.65rem', color: '#a06b8a', fontWeight: 600 }}>
+                      {f.unlockAge} 歲解鎖
+                    </div>
+                  ) : (
+                    <div style={{
+                      fontSize: '0.7rem', fontWeight: 700,
+                      color: canAfford ? '#7a4a6b' : '#c089a3',
+                      display: 'flex', alignItems: 'center', gap: '3px'
+                    }}>
+                      <Pearl size={14} /> {f.pearlCost}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === 'background' && (
+          <div style={{
+            flex: 1, overflowY: 'auto',
+            display: 'flex', flexDirection: 'column', gap: '8px',
+            padding: '4px'
+          }}>
+            {BACKGROUNDS.map(b => {
+              const owned = pet.owned.backgrounds.includes(b.id);
+              const ageLocked = ageYears < b.unlockAge;
+              const canAfford = pet.pearls >= b.pearlCost;
+              const flashing = shopFlash?.id === b.id;
+              const isFree = b.pearlCost === 0;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => !owned && !ageLocked && !isFree && buyBackground(b.id)}
+                  disabled={owned || isFree}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '14px',
+                    border: '2px solid',
+                    borderColor: owned ? '#a3e0a3' : ageLocked ? 'rgba(200, 200, 200, 0.5)' : '#ffd1dc',
+                    background: owned ? 'rgba(220, 245, 220, 0.6)' : ageLocked ? 'rgba(240, 240, 240, 0.5)' : 'white',
+                    cursor: owned || ageLocked || isFree ? 'default' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    opacity: ageLocked ? 0.5 : 1,
+                    fontFamily: 'inherit',
+                    animation: flashing ? 'shopFlash 1.5s ease' : 'none'
+                  }}
+                >
                   <div style={{
-                    fontSize: '0.65rem', fontWeight: 700, color: '#5a8a5a',
-                    display: 'flex', alignItems: 'center', gap: '2px'
-                  }}><Check size={10} strokeWidth={3} /> 已擁有</div>
-                ) : ageLocked ? (
-                  <div style={{ fontSize: '0.65rem', color: '#a06b8a', fontWeight: 600 }}>
-                    {f.unlockAge} 歲解鎖
+                    width: '60px', height: '40px', borderRadius: '10px',
+                    background: ageLocked ? '#ddd' : b.gradient,
+                    flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.2rem'
+                  }}>{ageLocked ? '🔒' : ''}</div>
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#5a3a4a' }}>{b.name}</div>
+                    {owned ? (
+                      <div style={{
+                        fontSize: '0.7rem', fontWeight: 700, color: '#5a8a5a',
+                        display: 'flex', alignItems: 'center', gap: '2px', marginTop: '2px'
+                      }}><Check size={10} strokeWidth={3} /> 已擁有</div>
+                    ) : ageLocked ? (
+                      <div style={{ fontSize: '0.7rem', color: '#a06b8a', fontWeight: 600, marginTop: '2px' }}>
+                        {b.unlockAge} 歲解鎖
+                      </div>
+                    ) : isFree ? (
+                      <div style={{ fontSize: '0.7rem', color: '#a06b8a', fontWeight: 600, marginTop: '2px' }}>
+                        預設背景
+                      </div>
+                    ) : (
+                      <div style={{
+                        fontSize: '0.75rem', fontWeight: 700,
+                        color: canAfford ? '#7a4a6b' : '#c089a3',
+                        display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px'
+                      }}>
+                        <Pearl size={14} /> {b.pearlCost}
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div style={{
-                    fontSize: '0.7rem', fontWeight: 700,
-                    color: canAfford ? '#7a4a6b' : '#c089a3',
-                    display: 'flex', alignItems: 'center', gap: '3px'
-                  }}>
-                    <Pearl size={14} /> {f.pearlCost}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <p style={{
           margin: '10px 0 0',
           fontSize: '0.7rem', color: '#a06b8a',
           textAlign: 'center'
-        }}>到「小窩」頁面布置買到的家具～</p>
+        }}>到「小窩」頁面布置買到的東西～</p>
       </div>
     </div>
   );
@@ -1582,7 +1771,7 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
           }}>(改名)</button>
         </div>
 
-        {showPetMenu && !showFruitPicker && petVisible && (
+        {showPetMenu && !showFruitPicker && petVisible && petLocation === 'outdoor' && (
           <div style={{
             display: 'flex', gap: '8px', justifyContent: 'center',
             marginTop: '12px', flexWrap: 'wrap',
@@ -1615,7 +1804,7 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
           </div>
         )}
 
-        {showFruitPicker && petVisible && (
+        {showFruitPicker && petVisible && petLocation === 'outdoor' && (
           <div style={{
             marginTop: '12px', padding: '14px',
             background: 'rgba(255, 255, 255, 0.7)',
@@ -1675,7 +1864,7 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
   );
 }
 
-function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop, petX, petDir, petLocation, petTransition, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
+function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop, petX, petDir, petLocation, petTransition, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl, callPetHome }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const currentBg = BACKGROUNDS.find(b => b.id === pet.currentBg) || BACKGROUNDS[0];
   const ownedFurniture = FURNITURE.filter(f => pet.owned.furniture.includes(f.id));
@@ -1876,20 +2065,45 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',
-            color: 'rgba(122, 74, 107, 0.5)',
-            fontSize: '0.85rem', textAlign: 'center', fontWeight: 600
+            color: 'rgba(122, 74, 107, 0.6)',
+            fontSize: '0.85rem', textAlign: 'center', fontWeight: 600,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'
           }}>
-            {pet.name} 在外面玩耍～<br/>點「布置」開始裝飾 ✨
+            <div>{pet.name} 在外面玩耍～<br/>點「布置」開始裝飾 ✨</div>
+            <button
+              onClick={callPetHome}
+              className="candy-btn"
+              style={{
+                padding: '8px 16px', borderRadius: '999px', border: 'none',
+                background: 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
+                color: 'white', fontWeight: 700, cursor: 'pointer',
+                fontSize: '0.8rem', fontFamily: 'inherit',
+                boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)'
+              }}
+            >📣 叫他回來</button>
           </div>
         )}
         {!petVisible && pet.roomItems.length > 0 && !editingRoom && (
           <div style={{
             position: 'absolute', bottom: '15px', left: '50%',
             transform: 'translateX(-50%)',
-            color: 'rgba(122, 74, 107, 0.4)',
-            fontSize: '0.7rem', fontWeight: 600
+            display: 'flex', alignItems: 'center', gap: '8px'
           }}>
-            🌷 {pet.name} 出門了
+            <span style={{
+              color: 'rgba(122, 74, 107, 0.5)',
+              fontSize: '0.7rem', fontWeight: 600
+            }}>🌷 {pet.name} 出門了</span>
+            <button
+              onClick={callPetHome}
+              className="candy-btn"
+              style={{
+                padding: '4px 10px', borderRadius: '999px', border: 'none',
+                background: 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
+                color: 'white', fontWeight: 700, cursor: 'pointer',
+                fontSize: '0.7rem', fontFamily: 'inherit',
+                boxShadow: '0 2px 6px rgba(255, 158, 199, 0.4)'
+              }}
+            >📣 叫他回來</button>
           </div>
         )}
       </div>
@@ -1909,7 +2123,7 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
       )}
 
       {/* Pet menu in room */}
-      {showPetMenu && !showFruitPicker && petVisible && !editingRoom && (
+      {showPetMenu && !showFruitPicker && petVisible && !editingRoom && petLocation === 'indoor' && (
         <div style={{
           display: 'flex', gap: '8px', justifyContent: 'center',
           marginBottom: '12px', flexWrap: 'wrap',
@@ -1942,7 +2156,7 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
         </div>
       )}
 
-      {showFruitPicker && petVisible && !editingRoom && (
+      {showFruitPicker && petVisible && !editingRoom && petLocation === 'indoor' && (
         <div style={{
           marginBottom: '12px', padding: '14px',
           background: 'rgba(255, 255, 255, 0.85)',
@@ -2387,7 +2601,9 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
   );
 }
 
-function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask }) {
+function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, addSuggestedTask }) {
+  const usedNames = new Set(tasks.map(t => t.name));
+  const availableSuggestions = SUGGESTED_TASKS.filter(s => !usedNames.has(s.name));
   return (
     <div style={{ padding: '0 20px' }}>
       <div style={{
@@ -2426,6 +2642,49 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask })
           💡 完成任務可獲得水果（每天最多 5 顆）
         </p>
       </div>
+
+      {availableSuggestions.length > 0 && (
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '24px', padding: '16px 18px 18px',
+          marginBottom: '16px',
+          border: '2px solid rgba(255, 255, 255, 0.9)',
+          boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
+        }}>
+          <h3 style={{
+            margin: '0 0 4px', color: '#7a4a6b',
+            fontFamily: '"Fredoka", sans-serif', fontSize: '1rem'
+          }}>💡 試試這些</h3>
+          <p style={{
+            margin: '0 0 10px', color: '#a06b8a',
+            fontSize: '0.72rem'
+          }}>點一下就能加入任務清單</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {availableSuggestions.map((s, i) => (
+              <button
+                key={i}
+                className="chip"
+                onClick={() => addSuggestedTask(s)}
+                style={{
+                  padding: '8px 12px', borderRadius: '999px',
+                  border: '2px dashed #ffb3d9',
+                  background: 'rgba(255, 240, 245, 0.7)',
+                  cursor: 'pointer',
+                  fontSize: '0.82rem', fontWeight: 600,
+                  color: '#5a3a4a',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  fontFamily: 'inherit'
+                }}
+              >
+                <span style={{ fontSize: '1rem' }}>{s.emoji}</span>{s.name}
+                <Plus size={12} strokeWidth={3} color="#ff6b9d" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {tasks.map(task => (
           <div key={task.id} style={{
