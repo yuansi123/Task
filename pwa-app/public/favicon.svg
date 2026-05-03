@@ -1,36 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-<defs>
-<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0%" stop-color="#fff0f5"/>
-<stop offset="100%" stop-color="#ffe4ec"/>
-</linearGradient>
-<radialGradient id="bowL" cx="35%" cy="35%">
-<stop offset="0%" stop-color="#ffafc7"/>
-<stop offset="100%" stop-color="#ff6b9d"/>
-</radialGradient>
-<radialGradient id="bowR" cx="65%" cy="35%">
-<stop offset="0%" stop-color="#ffafc7"/>
-<stop offset="100%" stop-color="#ff6b9d"/>
-</radialGradient>
-</defs>
-<rect width="100" height="100" rx="22" fill="url(#bg)"/>
-<!-- Tails -->
-<path d="M44 56 L30 84 L36 84 L38 78 L42 80 L46 60 Z" fill="#ff6b9d"/>
-<path d="M56 56 L70 84 L64 84 L62 78 L58 80 L54 60 Z" fill="#ff6b9d"/>
-<!-- Left loop -->
-<ellipse cx="32" cy="48" rx="18" ry="16" fill="url(#bowL)"/>
-<ellipse cx="36" cy="48" rx="6" ry="8" fill="#dc5f91"/>
-<!-- Right loop -->
-<ellipse cx="68" cy="48" rx="18" ry="16" fill="url(#bowR)"/>
-<ellipse cx="64" cy="48" rx="6" ry="8" fill="#dc5f91"/>
-<!-- Center knot -->
-<rect x="44" y="40" width="12" height="18" rx="3" fill="#dc5f91"/>
-<rect x="46" y="42" width="4" height="14" rx="2" fill="#ff8ab8"/>
-<!-- Sparkles -->
-<g fill="white">
-<circle cx="15" cy="20" r="1.5"/>
-<circle cx="85" cy="22" r="1.2"/>
-<circle cx="14" cy="80" r="1.2"/>
-<circle cx="86" cy="78" r="1.5"/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="b" cx="40%" cy="35%">
+      <stop offset="0%" stop-color="#ffe0eb"/>
+      <stop offset="60%" stop-color="#ffb3d1"/>
+      <stop offset="100%" stop-color="#ff8ab8"/>
+    </radialGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="#fff0f5"/>
+  <path d="M 60 18 C 36 18, 25 38, 25 56 L 25 92 C 25 96, 28 98, 32 95 C 35 92, 39 92, 42 95 C 45 98, 49 98, 52 95 C 55 92, 59 92, 62 95 C 65 98, 69 98, 72 95 C 75 92, 79 92, 82 95 C 85 98, 88 98, 92 95 C 95 98, 95 96, 95 92 L 95 56 C 95 38, 84 18, 60 18 Z" fill="url(#b)"/>
+  <circle cx="48" cy="52" r="4" fill="#3d2933"/>
+  <circle cx="72" cy="52" r="4" fill="#3d2933"/>
+  <circle cx="46.8" cy="50.5" r="1.4" fill="white"/>
+  <circle cx="70.8" cy="50.5" r="1.4" fill="white"/>
+  <path d="M 53 64 Q 60 70, 67 64" stroke="#3d2933" stroke-width="2.5" fill="none" stroke-linecap="round"/>
 </svg>
