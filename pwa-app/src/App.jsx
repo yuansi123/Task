@@ -88,14 +88,14 @@ const FURNITURE = [
   { id: 'candle', emoji: '🕯️', name: '蠟燭', unlockAge: 0, pearlCost: 3 },
   { id: 'mirror', emoji: '🪞', name: '小鏡子', unlockAge: 0, pearlCost: 8 },
   { id: 'clock', emoji: '⏰', name: '鬧鐘', unlockAge: 0, pearlCost: 8 },
-  { id: 'bed', emoji: '🛏️', name: '小床', unlockAge: 3, pearlCost: 20 },
-  { id: 'tv', emoji: '📺', name: '電視', unlockAge: 3, pearlCost: 20 },
-  { id: 'cactus', emoji: '🌵', name: '仙人掌', unlockAge: 3, pearlCost: 5 },
-  { id: 'flowers', emoji: '💐', name: '花束', unlockAge: 3, pearlCost: 5 },
-  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 3, pearlCost: 30 },
-  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 3, pearlCost: 20 },
-  { id: 'icecream', emoji: '🍦', name: '冰淇淋車', unlockAge: 3, pearlCost: 20 },
-  { id: 'rainbow', emoji: '🌈', name: '小彩虹', unlockAge: 3, pearlCost: 20 },
+  { id: 'cactus', emoji: '🌵', name: '仙人掌', unlockAge: 0, pearlCost: 5 },
+  { id: 'flowers', emoji: '💐', name: '花束', unlockAge: 0, pearlCost: 5 },
+  { id: 'bed', emoji: '🛏️', name: '小床', unlockAge: 0, pearlCost: 15 },
+  { id: 'tv', emoji: '📺', name: '電視', unlockAge: 0, pearlCost: 15 },
+  { id: 'icecream', emoji: '🍦', name: '冰淇淋車', unlockAge: 0, pearlCost: 12 },
+  { id: 'rainbow', emoji: '🌈', name: '小彩虹', unlockAge: 0, pearlCost: 12 },
+  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 3, pearlCost: 18 },
+  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 3, pearlCost: 25 },
   { id: 'cat', emoji: '🐱', name: '小貓朋友', unlockAge: 5, pearlCost: 30 },
   { id: 'rabbit', emoji: '🐰', name: '兔兔朋友', unlockAge: 5, pearlCost: 30 },
   { id: 'star', emoji: '⭐', name: '星星', unlockAge: 5, pearlCost: 30 },
@@ -222,11 +222,12 @@ function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
           </filter>
         </defs>
         <path
-          d="M 60 15 C 35 15, 22 35, 22 55 L 22 92
-             C 22 96, 26 98, 30 95 C 33 92, 37 92, 40 95
-             C 43 98, 47 98, 50 95 C 53 92, 57 92, 60 95
-             C 63 98, 67 98, 70 95 C 73 92, 77 92, 80 95
-             C 83 98, 87 98, 90 95 C 94 98, 98 96, 98 92
+          d="M 60 15 C 35 15, 22 35, 22 55 L 22 94
+             C 22 96, 25 97, 28 95.5 C 31 94, 34 94, 37 95.5
+             C 40 97, 43 97, 46 95.5 C 49 94, 52 94, 55 95.5
+             C 58 97, 62 97, 65 95.5 C 68 94, 71 94, 74 95.5
+             C 77 97, 80 97, 83 95.5 C 86 94, 89 94, 92 95.5
+             C 95 97, 98 96, 98 94
              L 98 55 C 98 35, 85 15, 60 15 Z"
           fill="url(#petBody)" filter="url(#petShadow)"
         />
@@ -773,6 +774,56 @@ export default function App() {
     setTimeout(() => setShopFlash(null), 1500);
   };
 
+  const exportBackup = () => {
+    const data = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      tasks: tasks,
+      history: history,
+      diaries: diaries,
+      pet: pet,
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `每日任務備份_${dateStr}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    playDingSound();
+  };
+
+  const importBackup = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (!data.version || (!data.tasks && !data.pet)) {
+          alert('檔案格式不正確，請選擇正確的備份檔。');
+          return;
+        }
+        const ok = confirm(
+          `確定要匯入備份嗎？\n\n備份時間：${data.exportedAt ? new Date(data.exportedAt).toLocaleString('zh-TW') : '未知'}\n\n⚠️ 目前所有資料會被覆蓋！`
+        );
+        if (!ok) return;
+        if (data.tasks) setTasks(data.tasks);
+        if (data.history) setHistory(data.history);
+        if (data.diaries) setDiaries(data.diaries);
+        if (data.pet) setPet(data.pet);
+        playRewardSound();
+        setTimeout(() => alert('✨ 備份已成功匯入！'), 100);
+      } catch (err) {
+        alert('讀取檔案失敗，可能不是有效的備份檔。');
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const feedFruit = (fruitId) => {
     if (!pet || (pet.fruits[fruitId] || 0) <= 0) return;
     const fruit = FRUITS.find(f => f.id === fruitId);
@@ -1124,6 +1175,8 @@ export default function App() {
             setNewTaskName={setNewTaskName}
             addTask={addTask} deleteTask={deleteTask}
             addSuggestedTask={addSuggestedTask}
+            exportBackup={exportBackup}
+            importBackup={importBackup}
           />
         )}
       </div>
@@ -1369,22 +1422,28 @@ export default function App() {
 
 function FruitPickerModal({ pet, feedFruit, onClose }) {
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(122, 74, 107, 0.5)',
-      backdropFilter: 'blur(10px)',
-      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-      padding: '16px', zIndex: 220
-    }}>
-      <div style={{
-        background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
-        borderRadius: '24px', padding: '20px 16px 24px',
-        maxWidth: '420px', width: '100%',
-        marginBottom: '90px',
-        border: '3px solid white',
-        boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
-        position: 'relative'
-      }}>
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(122, 74, 107, 0.5)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        zIndex: 220
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
+          borderRadius: '24px 24px 0 0',
+          padding: '20px 16px calc(24px + env(safe-area-inset-bottom))',
+          maxWidth: '480px', width: '100%',
+          border: '3px solid white', borderBottom: 'none',
+          boxShadow: '0 -10px 40px rgba(196, 77, 255, 0.3)',
+          position: 'relative'
+        }}
+      >
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           marginBottom: '12px'
@@ -1396,11 +1455,11 @@ function FruitPickerModal({ pet, feedFruit, onClose }) {
             onClick={onClose}
             style={{
               background: 'rgba(255, 209, 220, 0.4)',
-              border: 'none', width: '28px', height: '28px',
+              border: 'none', width: '32px', height: '32px',
               borderRadius: '50%', cursor: 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}
-          ><X size={14} color="#a06b8a" /></button>
+          ><X size={16} color="#a06b8a" /></button>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
           {FRUITS.map(f => {
@@ -1412,17 +1471,17 @@ function FruitPickerModal({ pet, feedFruit, onClose }) {
                 onClick={() => !disabled && feedFruit(f.id)}
                 disabled={disabled} className="candy-btn"
                 style={{
-                  padding: '10px 16px', borderRadius: '14px', border: '2px solid',
+                  padding: '12px 18px', borderRadius: '14px', border: '2px solid',
                   borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
                   background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
                   cursor: disabled ? 'default' : 'pointer',
                   opacity: disabled ? 0.4 : 1,
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                  fontFamily: 'inherit', minWidth: '60px'
+                  fontFamily: 'inherit', minWidth: '64px'
                 }}
               >
-                <span style={{ fontSize: '1.6rem' }}>{f.emoji}</span>
-                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
+                <span style={{ fontSize: '1.8rem' }}>{f.emoji}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
               </button>
             );
           })}
@@ -2582,8 +2641,9 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
   );
 }
 
-function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, addSuggestedTask }) {
+function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, addSuggestedTask, exportBackup, importBackup }) {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const fileInputRef = useRef(null);
   const usedNames = new Set(tasks.map(t => t.name));
   const availableSuggestions = SUGGESTED_TASKS.filter(s => !usedNames.has(s.name));
   return (
@@ -2646,7 +2706,7 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, a
             <span style={{
               color: '#7a4a6b',
               fontFamily: '"Fredoka", sans-serif', fontSize: '1rem', fontWeight: 700
-            }}>💡 試試這些 ({availableSuggestions.length})</span>
+            }}>💡 試試這些</span>
             <span style={{
               color: '#a06b8a', fontSize: '1rem',
               transform: suggestionsOpen ? 'rotate(180deg)' : 'rotate(0)',
@@ -2712,6 +2772,69 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, a
         {tasks.length === 0 && (
           <p style={{ textAlign: 'center', color: '#c089a3', padding: '20px' }}>還沒有任務，新增一個吧 🌸</p>
         )}
+      </div>
+
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.85)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: '24px', padding: '18px',
+        marginTop: '20px',
+        border: '2px solid rgba(255, 255, 255, 0.9)',
+        boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
+      }}>
+        <h3 style={{
+          margin: '0 0 6px', color: '#7a4a6b',
+          fontFamily: '"Fredoka", sans-serif', fontSize: '1rem'
+        }}>💾 資料備份</h3>
+        <p style={{
+          margin: '0 0 12px', color: '#a06b8a',
+          fontSize: '0.72rem', lineHeight: 1.5
+        }}>
+          資料只存在這台手機上。建議每隔一陣子匯出備份，存到雲端硬碟或寄給自己。
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+          <button
+            className="candy-btn"
+            onClick={exportBackup}
+            style={{
+              padding: '12px 16px', borderRadius: '14px', border: 'none',
+              background: 'linear-gradient(135deg, #c4e9ff, #a3c9ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.9rem', fontFamily: 'inherit',
+              boxShadow: '0 4px 12px rgba(107, 181, 255, 0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}
+          >📤 匯出備份檔</button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                importBackup(e.target.files[0]);
+                e.target.value = '';
+              }
+            }}
+          />
+          <button
+            className="candy-btn"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              padding: '12px 16px', borderRadius: '14px', border: '2px solid #ffd1dc',
+              background: 'white',
+              color: '#a06b8a', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.9rem', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}
+          >📥 匯入備份檔</button>
+        </div>
+        <p style={{
+          margin: '10px 0 0', color: '#c089a3',
+          fontSize: '0.68rem', textAlign: 'center', lineHeight: 1.4
+        }}>
+          ⚠️ 匯入會覆蓋目前所有資料
+        </p>
       </div>
     </div>
   );
