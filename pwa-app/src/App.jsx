@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, ChevronLeft, ChevronRight, Trophy, BookHeart, Save, Home, Gift, ShoppingBag } from 'lucide-react';
+import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, ChevronLeft, ChevronRight, Trophy, BookHeart, Save, Home, Gift, ShoppingBag, Settings, Download, Upload } from 'lucide-react';
 
 const storage = {
   get: (key) => {
@@ -48,7 +48,7 @@ const FRUITS = [
 const DAILY_FRUIT_CAP = 5;
 const PEARL_MIN_INTERVAL_MS = 30 * 60 * 1000; // 30 mins
 const PEARL_MAX_INTERVAL_MS = 90 * 60 * 1000; // 90 mins
-const PEARL_VISIBLE_MS = 60 * 1000; // 60 seconds visible
+const PEARL_VISIBLE_MS = 5 * 60 * 60 * 1000; // 5 hours - long window so users can find
 
 function xpForLevel(lv) {
   if (lv <= 0) return 0;
@@ -79,6 +79,7 @@ const PET_ENCOURAGEMENTS = [
 ];
 
 const FURNITURE = [
+  // 0 歲（新養寵物就能買）
   { id: 'sofa', emoji: '🛋️', name: '小沙發', unlockAge: 0, pearlCost: 8 },
   { id: 'lamp', emoji: '💡', name: '小檯燈', unlockAge: 0, pearlCost: 8 },
   { id: 'plant', emoji: '🪴', name: '盆栽', unlockAge: 0, pearlCost: 3 },
@@ -94,11 +95,26 @@ const FURNITURE = [
   { id: 'tv', emoji: '📺', name: '電視', unlockAge: 0, pearlCost: 15 },
   { id: 'icecream', emoji: '🍦', name: '冰淇淋車', unlockAge: 0, pearlCost: 12 },
   { id: 'rainbow', emoji: '🌈', name: '小彩虹', unlockAge: 0, pearlCost: 12 },
-  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 3, pearlCost: 18 },
-  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 3, pearlCost: 25 },
-  { id: 'cat', emoji: '🐱', name: '小貓朋友', unlockAge: 5, pearlCost: 30 },
-  { id: 'rabbit', emoji: '🐰', name: '兔兔朋友', unlockAge: 5, pearlCost: 30 },
+  // 1 歲解鎖
+  { id: 'guitar', emoji: '🎸', name: '吉他', unlockAge: 1, pearlCost: 18 },
+  { id: 'piano', emoji: '🎹', name: '鋼琴', unlockAge: 1, pearlCost: 25 },
+  { id: 'cake_big', emoji: '🍰', name: '草莓蛋糕', unlockAge: 1, pearlCost: 10 },
+  { id: 'donut', emoji: '🍩', name: '甜甜圈', unlockAge: 1, pearlCost: 8 },
+  { id: 'lollipop', emoji: '🍭', name: '棒棒糖', unlockAge: 1, pearlCost: 8 },
+  { id: 'cookie', emoji: '🍪', name: '小餅乾', unlockAge: 1, pearlCost: 6 },
+  { id: 'bow', emoji: '🎀', name: '蝴蝶結', unlockAge: 1, pearlCost: 10 },
+  { id: 'gift', emoji: '🎁', name: '禮物盒', unlockAge: 1, pearlCost: 12 },
+  { id: 'rose', emoji: '🌹', name: '玫瑰', unlockAge: 1, pearlCost: 10 },
+  { id: 'sunflower', emoji: '🌻', name: '向日葵', unlockAge: 1, pearlCost: 10 },
+  { id: 'umbrella', emoji: '☂️', name: '小雨傘', unlockAge: 1, pearlCost: 12 },
+  // 3 歲解鎖
+  { id: 'cat', emoji: '🐱', name: '小貓朋友', unlockAge: 3, pearlCost: 30 },
+  { id: 'rabbit', emoji: '🐰', name: '兔兔朋友', unlockAge: 3, pearlCost: 30 },
+  { id: 'dog', emoji: '🐶', name: '小狗朋友', unlockAge: 3, pearlCost: 30 },
+  // 5 歲解鎖
   { id: 'star', emoji: '⭐', name: '星星', unlockAge: 5, pearlCost: 30 },
+  { id: 'moon', emoji: '🌙', name: '月亮', unlockAge: 5, pearlCost: 30 },
+  // 10 歲解鎖（傳說級）
   { id: 'unicorn', emoji: '🦄', name: '獨角獸', unlockAge: 10, pearlCost: 50 },
   { id: 'crown', emoji: '👑', name: '皇冠', unlockAge: 10, pearlCost: 50 },
   { id: 'rocket', emoji: '🚀', name: '小火箭', unlockAge: 10, pearlCost: 50 },
@@ -222,12 +238,11 @@ function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
           </filter>
         </defs>
         <path
-          d="M 60 15 C 35 15, 22 35, 22 55 L 22 94
-             C 22 96, 25 97, 28 95.5 C 31 94, 34 94, 37 95.5
-             C 40 97, 43 97, 46 95.5 C 49 94, 52 94, 55 95.5
-             C 58 97, 62 97, 65 95.5 C 68 94, 71 94, 74 95.5
-             C 77 97, 80 97, 83 95.5 C 86 94, 89 94, 92 95.5
-             C 95 97, 98 96, 98 94
+          d="M 60 15 C 35 15, 22 35, 22 55 L 22 92
+             C 22 96, 26 98, 30 95 C 33 92, 37 92, 40 95
+             C 43 98, 47 98, 50 95 C 53 92, 57 92, 60 95
+             C 63 98, 67 98, 70 95 C 73 92, 77 92, 80 95
+             C 83 98, 87 98, 90 95 C 94 98, 98 96, 98 92
              L 98 55 C 98 35, 85 15, 60 15 Z"
           fill="url(#petBody)" filter="url(#petShadow)"
         />
@@ -305,6 +320,7 @@ export default function App() {
   const [showShop, setShowShop] = useState(false);
   const [shopFlash, setShopFlash] = useState(null);
   const [shopError, setShopError] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [petLocation, setPetLocation] = useState('outdoor');
   const [petX, setPetX] = useState(40);
@@ -1079,6 +1095,20 @@ export default function App() {
       )}
 
       <div style={{ padding: '24px 20px 16px', textAlign: 'center', position: 'relative', zIndex: 2 }}>
+        <button
+          onClick={() => setShowSettings(true)}
+          aria-label="設定"
+          style={{
+            position: 'absolute', top: '20px', right: '16px',
+            background: 'rgba(255, 255, 255, 0.7)',
+            border: 'none', width: '36px', height: '36px',
+            borderRadius: '50%', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 8px rgba(255, 158, 199, 0.2)'
+          }}
+        >
+          <Settings size={18} color="#a06b8a" strokeWidth={2.2} />
+        </button>
         <h1 style={{
           fontFamily: '"Fredoka", sans-serif',
           fontSize: '2rem', margin: 0,
@@ -1119,7 +1149,7 @@ export default function App() {
                 openMenu={() => setPetMenuMode(m => m === 'menu' ? 'closed' : 'menu')}
                 openFruitPicker={() => setPetMenuMode('fruit')}
                 closeFruitPicker={() => setPetMenuMode('menu')}
-                petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
+                petBubble={petBubble} petAnimKey={petAnimKey} setPetAnimKey={setPetAnimKey} petHearts={petHearts}
                 feedFruit={feedFruit} chatWithPet={chatWithPet}
                 renamePet={renamePet} totalFruits={totalFruits}
                 activePearl={activePearl} collectPearl={collectPearl}
@@ -1175,8 +1205,6 @@ export default function App() {
             setNewTaskName={setNewTaskName}
             addTask={addTask} deleteTask={deleteTask}
             addSuggestedTask={addSuggestedTask}
-            exportBackup={exportBackup}
-            importBackup={importBackup}
           />
         )}
       </div>
@@ -1354,6 +1382,14 @@ export default function App() {
         />
       )}
 
+      {showSettings && (
+        <SettingsModal
+          exportBackup={exportBackup}
+          importBackup={importBackup}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+
       {petMenuMode === 'fruit' && pet && (
         <FruitPickerModal
           pet={pet}
@@ -1490,6 +1526,107 @@ function FruitPickerModal({ pet, feedFruit, onClose }) {
           fontSize: '0.7rem', color: '#a06b8a',
           textAlign: 'center', marginTop: '12px', marginBottom: 0
         }}>每顆水果 +1 經驗值 ✨</p>
+      </div>
+    </div>
+  );
+}
+
+function SettingsModal({ exportBackup, importBackup, onClose }) {
+  const fileInputRef = useRef(null);
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0,
+        background: 'rgba(122, 74, 107, 0.5)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '16px', zIndex: 220
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
+          borderRadius: '24px', padding: '20px 18px 18px',
+          maxWidth: '380px', width: '100%',
+          border: '3px solid white',
+          boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
+          position: 'relative'
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute', top: '12px', right: '12px',
+            background: 'rgba(255, 255, 255, 0.8)', border: 'none',
+            width: '30px', height: '30px', borderRadius: '50%',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+        ><X size={16} color="#a06b8a" /></button>
+
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <Settings size={28} color="#a06b8a" strokeWidth={2.2} />
+          <h2 style={{
+            margin: '6px 0 0',
+            fontFamily: '"Fredoka", sans-serif',
+            fontSize: '1.15rem', color: '#7a4a6b'
+          }}>設定</h2>
+        </div>
+
+        <h3 style={{
+          margin: '0 0 6px', color: '#7a4a6b',
+          fontFamily: '"Fredoka", sans-serif', fontSize: '0.95rem'
+        }}>💾 資料備份</h3>
+        <p style={{
+          margin: '0 0 12px', color: '#a06b8a',
+          fontSize: '0.72rem', lineHeight: 1.5
+        }}>
+          資料只存在這台手機上。建議每隔一陣子匯出備份，存到 iCloud 雲碟或寄給自己；之後想還原時匯入即可。
+        </p>
+        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+          <button
+            className="candy-btn"
+            onClick={exportBackup}
+            style={{
+              padding: '12px 16px', borderRadius: '14px', border: 'none',
+              background: 'linear-gradient(135deg, #c4e9ff, #a3c9ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.9rem', fontFamily: 'inherit',
+              boxShadow: '0 4px 12px rgba(107, 181, 255, 0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}
+          ><Download size={15} strokeWidth={2.5} /> 匯出備份檔</button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                importBackup(e.target.files[0]);
+                e.target.value = '';
+              }
+            }}
+          />
+          <button
+            className="candy-btn"
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              padding: '12px 16px', borderRadius: '14px', border: '2px solid #ffd1dc',
+              background: 'white',
+              color: '#a06b8a', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.9rem', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}
+          ><Upload size={15} strokeWidth={2.5} /> 匯入備份檔</button>
+        </div>
+        <p style={{
+          margin: '10px 0 0', color: '#c089a3',
+          fontSize: '0.68rem', textAlign: 'center', lineHeight: 1.4
+        }}>
+          ⚠️ 匯入會覆蓋目前所有資料
+        </p>
       </div>
     </div>
   );
@@ -1722,7 +1859,7 @@ function ShopModal({ pet, buyFurniture, buyBackground, shopFlash, shopError, onC
   );
 }
 
-function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu, showFruitPicker, openMenu, openFruitPicker, closeFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
+function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu, showFruitPicker, openMenu, openFruitPicker, closeFruitPicker, petBubble, petAnimKey, setPetAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const stage = getPetStage(ageYears);
   const ageDisplay = ageYears < 1 ? `${Math.floor(ageYears * 12)}個月` : `${ageYears.toFixed(1)} 歲`;
@@ -1887,10 +2024,10 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
             </div>
           )}
 
-          {/* Pet - visible only when outdoor */}
+          {/* Pet - visible only when outdoor. Click just bounces - no feed/chat outdoor */}
           {petVisible && (
             <button
-              onClick={openMenu}
+              onClick={() => { setPetAnimKey(k => k + 1); }}
               style={{
                 position: 'absolute', bottom: '32px',
                 left: `${petX}%`, transform: 'translateX(-50%)',
@@ -1907,7 +2044,7 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: '#a06b8a' }}>
-          {petLocation === 'indoor' ? `${pet.name} 跑回家裡了～可到「小窩」找他` : (activePearl && activePearl.location === 'outdoor' ? '✨ 有珍珠！點起來' : `點 ${pet.name} 互動 💕`)}
+          {petLocation === 'indoor' ? `${pet.name} 跑回家裡了～可到「小窩」找他` : (activePearl && activePearl.location === 'outdoor' ? '✨ 有珍珠！點起來' : `${pet.name} 正在採集珍珠 🦪`)}
           <button onClick={renamePet} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: '0.7rem', color: '#c089a3', fontFamily: 'inherit',
@@ -1915,38 +2052,9 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
           }}>(改名)</button>
         </div>
 
-        {showPetMenu && !showFruitPicker && petVisible && petLocation === 'outdoor' && (
-          <div style={{
-            display: 'flex', gap: '8px', justifyContent: 'center',
-            marginTop: '12px', flexWrap: 'wrap',
-            animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-          }}>
-            <button
-              onClick={openFruitPicker}
-              className="candy-btn" disabled={totalFruits === 0}
-              style={{
-                padding: '10px 18px', borderRadius: '999px', border: 'none',
-                background: totalFruits === 0 ? 'rgba(255, 209, 220, 0.5)' : 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
-                color: totalFruits === 0 ? '#a06b8a' : 'white',
-                fontWeight: 700, cursor: totalFruits === 0 ? 'default' : 'pointer',
-                fontSize: '0.85rem',
-                boxShadow: totalFruits === 0 ? 'none' : '0 4px 12px rgba(255, 158, 199, 0.4)',
-                fontFamily: 'inherit'
-              }}
-            >🍓 餵食 ({totalFruits})</button>
-            <button
-              onClick={chatWithPet} className="candy-btn"
-              style={{
-                padding: '10px 18px', borderRadius: '999px', border: 'none',
-                background: 'linear-gradient(135deg, #d4b3ff, #c4a3ff)',
-                color: 'white', fontWeight: 700, cursor: 'pointer',
-                fontSize: '0.85rem',
-                boxShadow: '0 4px 12px rgba(196, 163, 255, 0.4)',
-                fontFamily: 'inherit'
-              }}
-            >💬 聊天</button>
-          </div>
-        )}
+        {/* Outdoor: no feed/chat menu - pet is collecting pearls */}
+
+        {/* Outdoor: pet just roams collecting pearls, no feed/chat */}
       </div>
     </div>
   );
@@ -2641,9 +2749,8 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
   );
 }
 
-function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, addSuggestedTask, exportBackup, importBackup }) {
+function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, addSuggestedTask }) {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const fileInputRef = useRef(null);
   const usedNames = new Set(tasks.map(t => t.name));
   const availableSuggestions = SUGGESTED_TASKS.filter(s => !usedNames.has(s.name));
   return (
@@ -2772,69 +2879,6 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, a
         {tasks.length === 0 && (
           <p style={{ textAlign: 'center', color: '#c089a3', padding: '20px' }}>還沒有任務，新增一個吧 🌸</p>
         )}
-      </div>
-
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(10px)',
-        borderRadius: '24px', padding: '18px',
-        marginTop: '20px',
-        border: '2px solid rgba(255, 255, 255, 0.9)',
-        boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
-      }}>
-        <h3 style={{
-          margin: '0 0 6px', color: '#7a4a6b',
-          fontFamily: '"Fredoka", sans-serif', fontSize: '1rem'
-        }}>💾 資料備份</h3>
-        <p style={{
-          margin: '0 0 12px', color: '#a06b8a',
-          fontSize: '0.72rem', lineHeight: 1.5
-        }}>
-          資料只存在這台手機上。建議每隔一陣子匯出備份，存到雲端硬碟或寄給自己。
-        </p>
-        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-          <button
-            className="candy-btn"
-            onClick={exportBackup}
-            style={{
-              padding: '12px 16px', borderRadius: '14px', border: 'none',
-              background: 'linear-gradient(135deg, #c4e9ff, #a3c9ff)',
-              color: 'white', fontWeight: 700, cursor: 'pointer',
-              fontSize: '0.9rem', fontFamily: 'inherit',
-              boxShadow: '0 4px 12px rgba(107, 181, 255, 0.3)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-            }}
-          >📤 匯出備份檔</button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,application/json"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                importBackup(e.target.files[0]);
-                e.target.value = '';
-              }
-            }}
-          />
-          <button
-            className="candy-btn"
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              padding: '12px 16px', borderRadius: '14px', border: '2px solid #ffd1dc',
-              background: 'white',
-              color: '#a06b8a', fontWeight: 700, cursor: 'pointer',
-              fontSize: '0.9rem', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-            }}
-          >📥 匯入備份檔</button>
-        </div>
-        <p style={{
-          margin: '10px 0 0', color: '#c089a3',
-          fontSize: '0.68rem', textAlign: 'center', lineHeight: 1.4
-        }}>
-          ⚠️ 匯入會覆蓋目前所有資料
-        </p>
       </div>
     </div>
   );
