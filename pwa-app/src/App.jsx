@@ -3,14 +3,9 @@ import { Check, Plus, Calendar as CalendarIcon, ListTodo, Trash2, Sparkles, X, C
 
 const storage = {
   get: (key) => {
-    try {
-      const v = localStorage.getItem(key);
-      return v ? JSON.parse(v) : null;
-    } catch { return null; }
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
   },
-  set: (key, value) => {
-    try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-  }
+  set: (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
 };
 
 const MOOD_OPTIONS = [
@@ -51,11 +46,9 @@ const FRUITS = [
 ];
 
 const DAILY_FRUIT_CAP = 5;
-
-// Pearl drop config: every 3-5 hours randomly
-const PEARL_MIN_INTERVAL_MS = 3 * 60 * 60 * 1000; // 3 hours
-const PEARL_MAX_INTERVAL_MS = 5 * 60 * 60 * 1000; // 5 hours
-const PEARL_VISIBLE_MS = 30 * 1000; // 30 seconds before disappearing if not collected
+const PEARL_MIN_INTERVAL_MS = 3 * 60 * 60 * 1000;
+const PEARL_MAX_INTERVAL_MS = 5 * 60 * 60 * 1000;
+const PEARL_VISIBLE_MS = 30 * 1000;
 
 function xpForLevel(lv) {
   if (lv <= 0) return 0;
@@ -85,7 +78,6 @@ const PET_ENCOURAGEMENTS = [
   '你笑起來最可愛了 ☺️', '謝謝你今天也來看我 💖',
 ];
 
-// Furniture catalog with shop prices (in pearls)
 const FURNITURE = [
   { id: 'sofa', emoji: '🛋️', name: '小沙發', unlockAge: 1, pearlCost: 8 },
   { id: 'lamp', emoji: '💡', name: '小檯燈', unlockAge: 1, pearlCost: 8 },
@@ -158,6 +150,114 @@ function pickRewardChoices(age, owned) {
   return shuffled.slice(0, Math.min(3, available.length));
 }
 
+function Pearl({ size = 32 }) {
+  return (
+    <svg viewBox="0 0 50 50" width={size} height={size} style={{ display: 'block' }}>
+      <defs>
+        <radialGradient id="pearlBody" cx="38%" cy="32%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="30%" stopColor="#fff5fa" />
+          <stop offset="70%" stopColor="#ffd9ec" />
+          <stop offset="100%" stopColor="#d4a8c8" />
+        </radialGradient>
+        <radialGradient id="pearlGlow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#ffe6f3" stopOpacity="0.6" />
+          <stop offset="100%" stopColor="#ffe6f3" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <circle cx="25" cy="25" r="24" fill="url(#pearlGlow)" />
+      <circle cx="25" cy="25" r="18" fill="url(#pearlBody)" />
+      <circle cx="25" cy="25" r="18" fill="none" stroke="#c89bb8" strokeWidth="0.5" opacity="0.4" />
+      <ellipse cx="19" cy="18" rx="6" ry="4" fill="white" opacity="0.85" />
+      <circle cx="29" cy="32" r="1.8" fill="white" opacity="0.7" />
+    </svg>
+  );
+}
+
+function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
+  const sizeMultiplier = ageYears < 0.5 ? 0.7 : ageYears < 1.5 ? 0.85 : ageYears < 3 ? 0.95 : 1;
+  const finalSize = size * sizeMultiplier;
+  return (
+    <div
+      key={animKey}
+      style={{
+        width: finalSize, height: finalSize,
+        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 1.5s ease-in-out infinite',
+        display: 'inline-block',
+        transform: `scaleX(${facing})`,
+        transition: 'transform 0.3s'
+      }}
+    >
+      <svg viewBox="0 0 120 120" width={finalSize} height={finalSize}>
+        <defs>
+          <radialGradient id="petBody" cx="40%" cy="35%">
+            <stop offset="0%" stopColor="#ffe0eb" />
+            <stop offset="60%" stopColor="#ffb3d1" />
+            <stop offset="100%" stopColor="#ff8ab8" />
+          </radialGradient>
+          <radialGradient id="petCheek" cx="50%" cy="50%">
+            <stop offset="0%" stopColor="#ff6b9d" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#ff6b9d" stopOpacity="0" />
+          </radialGradient>
+          <filter id="petShadow">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+            <feOffset dx="0" dy="2"/>
+            <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <path
+          d="M 60 15 C 35 15, 22 35, 22 55 L 22 92
+             C 22 96, 26 98, 30 95 C 33 92, 37 92, 40 95
+             C 43 98, 47 98, 50 95 C 53 92, 57 92, 60 95
+             C 63 98, 67 98, 70 95 C 73 92, 77 92, 80 95
+             C 83 98, 87 98, 90 95 C 94 98, 98 96, 98 92
+             L 98 55 C 98 35, 85 15, 60 15 Z"
+          fill="url(#petBody)" filter="url(#petShadow)"
+        />
+        <ellipse cx="38" cy="62" rx="9" ry="6" fill="url(#petCheek)" />
+        <ellipse cx="82" cy="62" rx="9" ry="6" fill="url(#petCheek)" />
+        <circle cx="46" cy="52" r="4" fill="#3d2933" />
+        <circle cx="74" cy="52" r="4" fill="#3d2933" />
+        <circle cx="44.5" cy="50.5" r="1.4" fill="white" />
+        <circle cx="72.5" cy="50.5" r="1.4" fill="white" />
+        <path d="M 53 65 Q 60 70, 67 65" stroke="#3d2933" strokeWidth="2" fill="none" strokeLinecap="round" />
+        <ellipse cx="48" cy="28" rx="8" ry="5" fill="white" opacity="0.5" />
+      </svg>
+    </div>
+  );
+}
+
+function HouseSVG({ size = 70 }) {
+  return (
+    <svg viewBox="0 0 100 100" width={size} height={size}>
+      <defs>
+        <linearGradient id="houseRoof" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ff9ec7" />
+          <stop offset="100%" stopColor="#d4587a" />
+        </linearGradient>
+        <linearGradient id="houseWall" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#fff5fa" />
+          <stop offset="100%" stopColor="#ffd9ec" />
+        </linearGradient>
+        <filter id="houseShadow">
+          <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+          <feOffset dx="0" dy="2"/>
+          <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
+          <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <path d="M 15 50 L 50 18 L 85 50 Z" fill="url(#houseRoof)" filter="url(#houseShadow)" />
+      <rect x="22" y="48" width="56" height="38" fill="url(#houseWall)" filter="url(#houseShadow)" />
+      <rect x="42" y="62" width="16" height="24" rx="2" fill="#c4a3ff" />
+      <circle cx="54" cy="74" r="1" fill="#7a4a6b" />
+      <rect x="28" y="56" width="10" height="10" rx="1" fill="#a3c9ff" />
+      <rect x="62" y="56" width="10" height="10" rx="1" fill="#a3c9ff" />
+      <text x="50" y="44" textAnchor="middle" fontSize="8" fill="#fff5fa">♥</text>
+    </svg>
+  );
+}
+
 export default function App() {
   const [view, setView] = useState('today');
   const [tasks, setTasks] = useState([]);
@@ -183,22 +283,21 @@ export default function App() {
   const [showLevelUp, setShowLevelUp] = useState(null);
   const [pendingReward, setPendingReward] = useState(null);
 
-  // Pearl state - active pearl on screen
-  const [activePearl, setActivePearl] = useState(null); // { x, y, expiresAt }
+  const [activePearl, setActivePearl] = useState(null);
   const [showPearlGain, setShowPearlGain] = useState(null);
 
-  // Shop state
   const [showShop, setShowShop] = useState(false);
-  const [shopFlash, setShopFlash] = useState(null); // { id }
+  const [shopFlash, setShopFlash] = useState(null);
   const [shopError, setShopError] = useState(null);
 
-  const [petX, setPetX] = useState(50);
+  const [petLocation, setPetLocation] = useState('outdoor');
+  const [petX, setPetX] = useState(40);
   const [petDir, setPetDir] = useState(1);
-  const walkRef = useRef(null);
+  const [petTransition, setPetTransition] = useState(null);
 
+  const walkRef = useRef(null);
   const [editingRoom, setEditingRoom] = useState(false);
   const [draggingItem, setDraggingItem] = useState(null);
-
   const audioCtxRef = useRef(null);
 
   const todayKey = () => {
@@ -214,10 +313,8 @@ export default function App() {
     const p = storage.get('pet');
     if (p) {
       setPet({
-        name: p.name,
-        createdAt: p.createdAt,
-        level: p.level || 0,
-        xp: p.xp || 0,
+        name: p.name, createdAt: p.createdAt,
+        level: p.level || 0, xp: p.xp || 0,
         fruits: p.fruits || { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
         owned: p.owned || { furniture: [], backgrounds: ['pink'] },
         currentBg: p.currentBg || 'pink',
@@ -225,7 +322,7 @@ export default function App() {
         claimedRewards: p.claimedRewards || [],
         dailyFruits: p.dailyFruits || { date: '', count: 0 },
         pearls: p.pearls || 0,
-        nextPearlAt: p.nextPearlAt || (Date.now() + PEARL_MIN_INTERVAL_MS + Math.random() * (PEARL_MAX_INTERVAL_MS - PEARL_MIN_INTERVAL_MS)),
+        nextPearlAt: p.nextPearlAt || (Date.now() + PEARL_MIN_INTERVAL_MS),
       });
     } else {
       setShowNamePrompt(true);
@@ -239,18 +336,20 @@ export default function App() {
   useEffect(() => { if (!loading && pet) storage.set('pet', pet); }, [pet, loading]);
 
   useEffect(() => {
-    if (!pet) return;
+    if (!pet || petTransition) return;
     const tick = () => {
       setPetX(x => {
         const next = x + petDir * (0.4 + Math.random() * 0.6);
-        if (next > 80) { setPetDir(-1); return 80; }
-        if (next < 20) { setPetDir(1); return 20; }
+        const maxX = petLocation === 'outdoor' ? 70 : 80;
+        const minX = 15;
+        if (next > maxX) { setPetDir(-1); return maxX; }
+        if (next < minX) { setPetDir(1); return minX; }
         return next;
       });
     };
     walkRef.current = setInterval(tick, 200);
     return () => clearInterval(walkRef.current);
-  }, [pet, petDir]);
+  }, [pet, petDir, petLocation, petTransition]);
 
   useEffect(() => {
     if (!pet) return;
@@ -260,38 +359,65 @@ export default function App() {
     return () => clearInterval(i);
   }, [pet]);
 
-  // Pearl drop check - runs every 30 seconds
+  useEffect(() => {
+    if (!pet || petTransition) return;
+    const triggerTransition = () => {
+      if (Math.random() < 0.3) {
+        if (petLocation === 'outdoor') {
+          setPetTransition('entering');
+          setPetDir(1);
+          const walkInterval = setInterval(() => {
+            setPetX(x => {
+              if (x >= 75) {
+                clearInterval(walkInterval);
+                setTimeout(() => {
+                  setPetLocation('indoor');
+                  setPetX(50);
+                  setPetDir(Math.random() < 0.5 ? -1 : 1);
+                  setPetTransition(null);
+                }, 400);
+                return 78;
+              }
+              return x + 1;
+            });
+          }, 100);
+        } else {
+          setPetTransition('leaving');
+          setTimeout(() => {
+            setPetLocation('outdoor');
+            setPetX(75);
+            setPetDir(-1);
+            setPetTransition(null);
+          }, 600);
+        }
+      }
+    };
+    const delay = 60000 + Math.random() * 60000;
+    const t = setTimeout(triggerTransition, delay);
+    return () => clearTimeout(t);
+  }, [pet, petLocation, petTransition]);
+
   useEffect(() => {
     if (!pet) return;
     const checkPearl = () => {
       const now = Date.now();
-      // Generate pearl if time has come and no active pearl
       if (now >= pet.nextPearlAt && !activePearl) {
-        // Place near pet (randomly close)
-        const px = Math.max(15, Math.min(85, petX + (Math.random() * 20 - 10)));
-        const py = 30 + Math.random() * 40; // somewhere mid-area
-        setActivePearl({
-          x: px,
-          y: py,
-          expiresAt: now + PEARL_VISIBLE_MS,
-          key: now
-        });
+        const px = Math.max(15, Math.min(70, petX + (Math.random() * 20 - 10)));
+        const py = 30 + Math.random() * 40;
+        setActivePearl({ x: px, y: py, expiresAt: now + PEARL_VISIBLE_MS, key: now, location: petLocation });
         playPearlAppearSound();
-        // Schedule next pearl
         const nextDelay = PEARL_MIN_INTERVAL_MS + Math.random() * (PEARL_MAX_INTERVAL_MS - PEARL_MIN_INTERVAL_MS);
         setPet(p => ({ ...p, nextPearlAt: now + nextDelay }));
       }
-      // Auto-remove expired pearl
       if (activePearl && now >= activePearl.expiresAt) {
         setActivePearl(null);
       }
     };
-    const interval = setInterval(checkPearl, 5000); // check every 5s
-    checkPearl(); // also check immediately
+    const interval = setInterval(checkPearl, 5000);
+    checkPearl();
     return () => clearInterval(interval);
-  }, [pet, activePearl, petX]);
+  }, [pet, activePearl, petX, petLocation]);
 
-  // Age-based rewards
   useEffect(() => {
     if (!pet) return;
     const age = Math.floor(getPetAgeYears(pet.createdAt));
@@ -422,7 +548,6 @@ export default function App() {
       });
     } catch (e) {}
   };
-  // Twinkly sound for pearl appearing
   const playPearlAppearSound = () => {
     try {
       const ctx = initAudio(); const now = ctx.currentTime;
@@ -434,7 +559,6 @@ export default function App() {
       });
     } catch (e) {}
   };
-  // Glittery collect sound
   const playPearlCollectSound = () => {
     try {
       const ctx = initAudio(); const now = ctx.currentTime;
@@ -446,7 +570,6 @@ export default function App() {
       });
     } catch (e) {}
   };
-  // Cash register-ish chime for purchase
   const playPurchaseSound = () => {
     try {
       const ctx = initAudio(); const now = ctx.currentTime;
@@ -533,17 +656,13 @@ export default function App() {
       setPet(p => ({ ...p, name }));
     } else {
       setPet({
-        name,
-        createdAt: new Date().toISOString(),
+        name, createdAt: new Date().toISOString(),
         level: 0, xp: 0,
         fruits: { strawberry: 0, apple: 0, grape: 0, peach: 0, cherry: 0 },
         owned: { furniture: [], backgrounds: ['pink'] },
-        currentBg: 'pink',
-        roomItems: [],
-        claimedRewards: [],
-        dailyFruits: { date: '', count: 0 },
-        pearls: 0,
-        nextPearlAt: Date.now() + PEARL_MIN_INTERVAL_MS,
+        currentBg: 'pink', roomItems: [],
+        claimedRewards: [], dailyFruits: { date: '', count: 0 },
+        pearls: 0, nextPearlAt: Date.now() + PEARL_MIN_INTERVAL_MS,
       });
     }
     setShowNamePrompt(false);
@@ -723,10 +842,12 @@ export default function App() {
         @keyframes levelUpText { 0%{opacity:0; transform:translate(-50%,-50%) scale(0.5)} 30%{opacity:1; transform:translate(-50%,-50%) scale(1.2)} 70%{opacity:1; transform:translate(-50%,-50%) scale(1)} 100%{opacity:0; transform:translate(-50%,-100%) scale(0.9)} }
         @keyframes giftBounce { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-15px) rotate(-5deg)} }
         @keyframes sparkleSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
-        @keyframes pearlPulse { 0%,100%{transform:translate(-50%,-50%) scale(1); filter:drop-shadow(0 0 8px rgba(255,255,255,0.9))} 50%{transform:translate(-50%,-50%) scale(1.15); filter:drop-shadow(0 0 16px rgba(255,200,230,1))} }
-        @keyframes pearlAppear { 0%{transform:translate(-50%,-50%) scale(0) rotate(0); opacity:0} 50%{opacity:1} 100%{transform:translate(-50%,-50%) scale(1) rotate(360deg); opacity:1} }
-        @keyframes pearlCollect { 0%{transform:translate(-50%,-50%) scale(1); opacity:1} 100%{transform:translate(-50%,-50%) scale(2.5); opacity:0} }
+        @keyframes pearlPulse { 0%,100%{transform:translate(-50%,-50%) scale(1)} 50%{transform:translate(-50%,-50%) scale(1.12)} }
+        @keyframes pearlAppear { 0%{transform:translate(-50%,-50%) scale(0) rotate(0); opacity:0} 60%{opacity:1; transform:translate(-50%,-50%) scale(1.2) rotate(180deg)} 100%{transform:translate(-50%,-50%) scale(1) rotate(360deg); opacity:1} }
         @keyframes shopFlash { 0%,100%{background-color:white} 50%{background-color:#a3e0a3} }
+        @keyframes cloudDrift { 0%{transform:translateX(-30px)} 100%{transform:translateX(30px)} }
+        @keyframes petFadeOut { from{opacity:1; transform:translateX(-50%) scale(1)} to{opacity:0; transform:translateX(-50%) scale(0.5)} }
+        @keyframes petFadeIn { from{opacity:0; transform:translateX(-50%) scale(0.5)} to{opacity:1; transform:translateX(-50%) scale(1)} }
         .candy-btn { transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
         .candy-btn:active { transform: scale(0.95); }
         .task-card { transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
@@ -784,7 +905,7 @@ export default function App() {
           animation: 'fruitGain 2.5s ease-out forwards',
           display: 'flex', alignItems: 'center', gap: '8px'
         }}>
-          <span style={{ fontSize: '1.5rem' }}>🦪</span>
+          <Pearl size={28} />
           收集到一顆珍珠！
         </div>
       )}
@@ -851,6 +972,7 @@ export default function App() {
             {pet && (
               <PetSection
                 pet={pet} petX={petX} petDir={petDir}
+                petLocation={petLocation} petTransition={petTransition}
                 showPetMenu={showPetMenu} setShowPetMenu={setShowPetMenu}
                 showFruitPicker={showFruitPicker} setShowFruitPicker={setShowFruitPicker}
                 petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
@@ -870,6 +992,14 @@ export default function App() {
             editingRoom={editingRoom} setEditingRoom={setEditingRoom}
             draggingItem={draggingItem} setDraggingItem={setDraggingItem}
             setShowShop={setShowShop}
+            petX={petX} petDir={petDir}
+            petLocation={petLocation} petTransition={petTransition}
+            showPetMenu={showPetMenu} setShowPetMenu={setShowPetMenu}
+            showFruitPicker={showFruitPicker} setShowFruitPicker={setShowFruitPicker}
+            petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
+            feedFruit={feedFruit} chatWithPet={chatWithPet}
+            renamePet={renamePet} totalFruits={totalFruits}
+            activePearl={activePearl} collectPearl={collectPearl}
           />
         )}
 
@@ -1048,9 +1178,7 @@ export default function App() {
                     {choice.type === 'furniture' ? choice.emoji : '🖼️'}
                   </div>
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ fontWeight: 700, color: '#5a3a4a', fontSize: '0.95rem' }}>
-                      {choice.name}
-                    </div>
+                    <div style={{ fontWeight: 700, color: '#5a3a4a', fontSize: '0.95rem' }}>{choice.name}</div>
                     <div style={{ fontSize: '0.7rem', color: '#a06b8a' }}>
                       {choice.type === 'furniture' ? '小家具' : '房間背景'}
                     </div>
@@ -1069,10 +1197,8 @@ export default function App() {
 
       {showShop && pet && (
         <ShopModal
-          pet={pet}
-          buyFurniture={buyFurniture}
-          shopFlash={shopFlash}
-          shopError={shopError}
+          pet={pet} buyFurniture={buyFurniture}
+          shopFlash={shopFlash} shopError={shopError}
           onClose={() => setShowShop(false)}
         />
       )}
@@ -1181,7 +1307,7 @@ function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
             background: 'rgba(255, 255, 255, 0.7)',
             fontSize: '0.85rem', fontWeight: 700, color: '#7a4a6b'
           }}>
-            🦪 你有 {pet.pearls || 0} 顆珍珠
+            <Pearl size={20} /> 你有 {pet.pearls || 0} 顆珍珠
           </div>
         </div>
 
@@ -1225,21 +1351,16 @@ function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
                   opacity: ageLocked ? 0.5 : 1,
                   fontFamily: 'inherit',
                   position: 'relative',
-                  animation: flashing ? 'shopFlash 1.5s ease' : 'none',
-                  transition: 'transform 0.2s'
+                  animation: flashing ? 'shopFlash 1.5s ease' : 'none'
                 }}
               >
                 <span style={{ fontSize: '1.8rem' }}>{ageLocked ? '🔒' : f.emoji}</span>
-                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5a3a4a' }}>
-                  {f.name}
-                </span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#5a3a4a' }}>{f.name}</span>
                 {owned ? (
                   <div style={{
                     fontSize: '0.65rem', fontWeight: 700, color: '#5a8a5a',
                     display: 'flex', alignItems: 'center', gap: '2px'
-                  }}>
-                    <Check size={10} strokeWidth={3} /> 已擁有
-                  </div>
+                  }}><Check size={10} strokeWidth={3} /> 已擁有</div>
                 ) : ageLocked ? (
                   <div style={{ fontSize: '0.65rem', color: '#a06b8a', fontWeight: 600 }}>
                     {f.unlockAge} 歲解鎖
@@ -1248,9 +1369,9 @@ function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
                   <div style={{
                     fontSize: '0.7rem', fontWeight: 700,
                     color: canAfford ? '#7a4a6b' : '#c089a3',
-                    display: 'flex', alignItems: 'center', gap: '2px'
+                    display: 'flex', alignItems: 'center', gap: '3px'
                   }}>
-                    🦪 {f.pearlCost}
+                    <Pearl size={14} /> {f.pearlCost}
                   </div>
                 )}
               </button>
@@ -1268,66 +1389,14 @@ function ShopModal({ pet, buyFurniture, shopFlash, shopError, onClose }) {
   );
 }
 
-function PetSVG({ size = 120, animKey = 0, ageYears = 0, facing = 1 }) {
-  const sizeMultiplier = ageYears < 0.5 ? 0.7 : ageYears < 1.5 ? 0.85 : ageYears < 3 ? 0.95 : 1;
-  const finalSize = size * sizeMultiplier;
-  return (
-    <div
-      key={animKey}
-      style={{
-        width: finalSize, height: finalSize,
-        animation: animKey > 0 ? 'petBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)' : 'petWalk 1.5s ease-in-out infinite',
-        display: 'inline-block',
-        transform: `scaleX(${facing})`,
-        transition: 'transform 0.3s'
-      }}
-    >
-      <svg viewBox="0 0 120 120" width={finalSize} height={finalSize}>
-        <defs>
-          <radialGradient id="petBody" cx="40%" cy="35%">
-            <stop offset="0%" stopColor="#ffe0eb" />
-            <stop offset="60%" stopColor="#ffb3d1" />
-            <stop offset="100%" stopColor="#ff8ab8" />
-          </radialGradient>
-          <radialGradient id="petCheek" cx="50%" cy="50%">
-            <stop offset="0%" stopColor="#ff6b9d" stopOpacity="0.6" />
-            <stop offset="100%" stopColor="#ff6b9d" stopOpacity="0" />
-          </radialGradient>
-          <filter id="petShadow">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
-            <feOffset dx="0" dy="2"/>
-            <feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer>
-            <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <path
-          d="M 60 15 C 35 15, 22 35, 22 55 L 22 92
-             C 22 96, 26 98, 30 95 C 33 92, 37 92, 40 95
-             C 43 98, 47 98, 50 95 C 53 92, 57 92, 60 95
-             C 63 98, 67 98, 70 95 C 73 92, 77 92, 80 95
-             C 83 98, 87 98, 90 95 C 94 98, 98 96, 98 92
-             L 98 55 C 98 35, 85 15, 60 15 Z"
-          fill="url(#petBody)" filter="url(#petShadow)"
-        />
-        <ellipse cx="38" cy="62" rx="9" ry="6" fill="url(#petCheek)" />
-        <ellipse cx="82" cy="62" rx="9" ry="6" fill="url(#petCheek)" />
-        <circle cx="46" cy="52" r="4" fill="#3d2933" />
-        <circle cx="74" cy="52" r="4" fill="#3d2933" />
-        <circle cx="44.5" cy="50.5" r="1.4" fill="white" />
-        <circle cx="72.5" cy="50.5" r="1.4" fill="white" />
-        <path d="M 53 65 Q 60 70, 67 65" stroke="#3d2933" strokeWidth="2" fill="none" strokeLinecap="round" />
-        <ellipse cx="48" cy="28" rx="8" ry="5" fill="white" opacity="0.5" />
-      </svg>
-    </div>
-  );
-}
-
-function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
+function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const stage = getPetStage(ageYears);
   const ageDisplay = ageYears < 1 ? `${Math.floor(ageYears * 12)}個月` : `${ageYears.toFixed(1)} 歲`;
   const xpNeeded = pet.level >= 100 ? 0 : xpForLevel(pet.level + 1);
   const xpPct = pet.level >= 100 ? 100 : (pet.xp / xpNeeded) * 100;
+  // Pet only visible outdoors here (and during 'entering' animation)
+  const petVisible = petLocation === 'outdoor';
 
   return (
     <div style={{ padding: '24px 20px 0', position: 'relative' }}>
@@ -1359,8 +1428,8 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
               background: 'linear-gradient(90deg, #ff6b9d, #c44dff)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
             }}>LV {pet.level}</div>
-            <div style={{ fontSize: '0.7rem', color: '#a06b8a' }}>
-              🍓 {totalFruits} · 🦪 {pet.pearls || 0}
+            <div style={{ fontSize: '0.7rem', color: '#a06b8a', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              🍓 {totalFruits} · <Pearl size={12} /> {pet.pearls || 0}
             </div>
           </div>
         </div>
@@ -1385,19 +1454,74 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           </div>
         </div>
 
+        {/* Outdoor scene */}
         <div style={{
-          position: 'relative', height: '160px',
-          background: 'linear-gradient(180deg, rgba(255, 240, 245, 0.5), rgba(255, 230, 245, 0.7))',
+          position: 'relative', height: '180px',
+          background: 'linear-gradient(180deg, #c4e9ff 0%, #d4f0e8 60%, #a3d49a 100%)',
           borderRadius: '20px',
-          border: '2px dashed rgba(255, 158, 199, 0.4)',
+          border: '2px solid rgba(255, 255, 255, 0.9)',
           overflow: 'hidden'
         }}>
-          <div style={{ position: 'absolute', bottom: '8px', left: '12%', fontSize: '0.9rem', opacity: 0.5 }}>🌸</div>
-          <div style={{ position: 'absolute', bottom: '12px', right: '15%', fontSize: '0.8rem', opacity: 0.5 }}>🌷</div>
-          <div style={{ position: 'absolute', top: '8px', left: '20%', fontSize: '0.7rem', opacity: 0.4 }}>✨</div>
-          <div style={{ position: 'absolute', top: '12px', right: '25%', fontSize: '0.8rem', opacity: 0.4 }}>☁️</div>
+          {/* Clouds */}
+          <div style={{
+            position: 'absolute', top: '12px', left: '10%', fontSize: '1.6rem',
+            animation: 'cloudDrift 8s ease-in-out infinite alternate'
+          }}>☁️</div>
+          <div style={{
+            position: 'absolute', top: '20px', left: '40%', fontSize: '1.2rem', opacity: 0.7,
+            animation: 'cloudDrift 10s ease-in-out infinite alternate 1s'
+          }}>☁️</div>
+          <div style={{
+            position: 'absolute', top: '8px', right: '30%', fontSize: '1.4rem',
+            animation: 'cloudDrift 9s ease-in-out infinite alternate-reverse'
+          }}>☁️</div>
 
-          {petBubble && (
+          {/* Sun */}
+          <div style={{
+            position: 'absolute', top: '8px', right: '10%', fontSize: '1.5rem'
+          }}>☀️</div>
+
+          {/* Grass at bottom */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            height: '40px',
+            background: 'linear-gradient(180deg, transparent 0%, #8acc7a 30%, #6eb55c 100%)',
+          }} />
+          {/* Grass blades */}
+          <div style={{ position: 'absolute', bottom: '8px', left: '10%', fontSize: '0.9rem' }}>🌱</div>
+          <div style={{ position: 'absolute', bottom: '6px', left: '25%', fontSize: '0.8rem' }}>🌾</div>
+          <div style={{ position: 'absolute', bottom: '10px', left: '38%', fontSize: '0.8rem' }}>🌷</div>
+          <div style={{ position: 'absolute', bottom: '8px', left: '55%', fontSize: '0.9rem' }}>🌼</div>
+          <div style={{ position: 'absolute', bottom: '6px', left: '68%', fontSize: '0.8rem' }}>🌱</div>
+
+          {/* House on the right */}
+          <div style={{
+            position: 'absolute', bottom: '20px', right: '4%',
+            zIndex: 2
+          }}>
+            <HouseSVG size={70} />
+          </div>
+
+          {/* Active pearl - only show when in outdoor */}
+          {activePearl && activePearl.location === 'outdoor' && (
+            <button
+              key={activePearl.key}
+              onClick={collectPearl}
+              style={{
+                position: 'absolute',
+                left: `${activePearl.x}%`,
+                top: `${activePearl.y}%`,
+                background: 'transparent', border: 'none',
+                cursor: 'pointer', padding: 0,
+                zIndex: 8,
+                animation: 'pearlAppear 0.5s ease-out, pearlPulse 1.5s ease-in-out 0.5s infinite'
+              }}
+              aria-label="撿起珍珠"
+            ><Pearl size={36} /></button>
+          )}
+
+          {/* Speech bubble */}
+          {petBubble && petVisible && (
             <div style={{
               position: 'absolute', top: '8px',
               left: `${petX}%`, transform: 'translateX(-50%)',
@@ -1412,7 +1536,8 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
             }}>{petBubble.text}</div>
           )}
 
-          {petHearts > 0 && (
+          {/* Hearts */}
+          {petHearts > 0 && petVisible && (
             <div style={{
               position: 'absolute', bottom: '60px',
               left: `${petX}%`, transform: 'translateX(-50%)',
@@ -1429,40 +1554,27 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
             </div>
           )}
 
-          {/* Active pearl on screen */}
-          {activePearl && (
+          {/* Pet - visible only when outdoor */}
+          {petVisible && (
             <button
-              key={activePearl.key}
-              onClick={collectPearl}
+              onClick={() => setShowPetMenu(s => !s)}
               style={{
-                position: 'absolute',
-                left: `${activePearl.x}%`,
-                top: `${activePearl.y}%`,
+                position: 'absolute', bottom: '32px',
+                left: `${petX}%`, transform: 'translateX(-50%)',
                 background: 'transparent', border: 'none',
                 cursor: 'pointer', padding: 0,
-                fontSize: '1.8rem', zIndex: 8,
-                animation: 'pearlAppear 0.5s ease-out, pearlPulse 1.5s ease-in-out 0.5s infinite'
+                transition: petTransition === 'entering' ? 'left 0.1s linear' : 'left 1s linear',
+                animation: petTransition === 'entering' ? 'petFadeOut 0.4s ease-in 0.4s forwards' : 'none',
+                zIndex: 3
               }}
-              aria-label="撿起珍珠"
-            >🦪</button>
+            >
+              <PetSVG size={80} animKey={petAnimKey} ageYears={ageYears} facing={petDir} />
+            </button>
           )}
-
-          <button
-            onClick={() => setShowPetMenu(s => !s)}
-            style={{
-              position: 'absolute', bottom: '8px',
-              left: `${petX}%`, transform: 'translateX(-50%)',
-              background: 'transparent', border: 'none',
-              cursor: 'pointer', padding: 0,
-              transition: 'left 1s linear'
-            }}
-          >
-            <PetSVG size={90} animKey={petAnimKey} ageYears={ageYears} facing={petDir} />
-          </button>
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: '#a06b8a' }}>
-          {activePearl ? '✨ 有珍珠！點 🦪 撿起來' : `點 ${pet.name} 互動 💕`}
+          {petLocation === 'indoor' ? `${pet.name} 跑回家裡了～可到「小窩」找他` : (activePearl && activePearl.location === 'outdoor' ? '✨ 有珍珠！點起來' : `點 ${pet.name} 互動 💕`)}
           <button onClick={renamePet} style={{
             background: 'none', border: 'none', cursor: 'pointer',
             fontSize: '0.7rem', color: '#c089a3', fontFamily: 'inherit',
@@ -1470,7 +1582,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           }}>(改名)</button>
         </div>
 
-        {showPetMenu && !showFruitPicker && (
+        {showPetMenu && !showFruitPicker && petVisible && (
           <div style={{
             display: 'flex', gap: '8px', justifyContent: 'center',
             marginTop: '12px', flexWrap: 'wrap',
@@ -1503,7 +1615,7 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
           </div>
         )}
 
-        {showFruitPicker && (
+        {showFruitPicker && petVisible && (
           <div style={{
             marginTop: '12px', padding: '14px',
             background: 'rgba(255, 255, 255, 0.7)',
@@ -1563,12 +1675,13 @@ function PetSection({ pet, petX, petDir, showPetMenu, setShowPetMenu, showFruitP
   );
 }
 
-function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop }) {
+function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop, petX, petDir, petLocation, petTransition, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const currentBg = BACKGROUNDS.find(b => b.id === pet.currentBg) || BACKGROUNDS[0];
   const ownedFurniture = FURNITURE.filter(f => pet.owned.furniture.includes(f.id));
   const ownedBackgrounds = BACKGROUNDS.filter(b => pet.owned.backgrounds.includes(b.id));
   const roomRef = useRef(null);
+  const petVisible = petLocation === 'indoor';
 
   const handleRoomTouch = (e) => {
     if (!editingRoom || !draggingItem) return;
@@ -1604,7 +1717,10 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
               display: 'flex', alignItems: 'center', gap: '4px'
             }}
           >
-            <ShoppingBag size={14} strokeWidth={2.5} /> 商店 🦪{pet.pearls || 0}
+            <ShoppingBag size={14} strokeWidth={2.5} /> 商店
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+              <Pearl size={12} />{pet.pearls || 0}
+            </span>
           </button>
           <button
             onClick={() => setEditingRoom(e => !e)}
@@ -1642,13 +1758,8 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
           position: 'absolute', bottom: '60px', left: 0, right: 0,
           height: '2px', background: 'rgba(255, 255, 255, 0.5)',
         }} />
-        <div style={{
-          position: 'absolute',
-          bottom: '15px', left: '50%',
-          transform: 'translateX(-50%)'
-        }}>
-          <PetSVG size={80} animKey={0} ageYears={ageYears} facing={1} />
-        </div>
+
+        {/* Room items */}
         {pet.roomItems.map(item => {
           const furn = FURNITURE.find(f => f.id === item.furnitureId);
           if (!furn) return null;
@@ -1689,17 +1800,199 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
             </div>
           );
         })}
-        {pet.roomItems.length === 0 && !editingRoom && (
+
+        {/* Speech bubble - indoor only */}
+        {petBubble && petVisible && (
+          <div style={{
+            position: 'absolute', top: '8px',
+            left: `${petX}%`, transform: 'translateX(-50%)',
+            background: 'white', padding: '6px 12px',
+            borderRadius: '14px', border: '2px solid #ffd1dc',
+            boxShadow: '0 4px 12px rgba(255, 158, 199, 0.3)',
+            fontSize: '0.78rem', fontWeight: 600, color: '#5a3a4a',
+            whiteSpace: 'nowrap', maxWidth: '180px',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            zIndex: 10,
+            animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+          }}>{petBubble.text}</div>
+        )}
+
+        {/* Hearts */}
+        {petHearts > 0 && petVisible && (
+          <div style={{
+            position: 'absolute', bottom: '70px',
+            left: `${petX}%`, transform: 'translateX(-50%)',
+            pointerEvents: 'none', zIndex: 5
+          }}>
+            {[...Array(petHearts)].map((_, i) => (
+              <div key={`${petHearts}-${i}`} style={{
+                position: 'absolute', fontSize: '1.2rem',
+                left: `${(i - petHearts / 2) * 16}px`,
+                animation: 'heartFloat 2s ease-out forwards',
+                animationDelay: `${i * 0.1}s`
+              }}>💗</div>
+            ))}
+          </div>
+        )}
+
+        {/* Active pearl - indoor only */}
+        {activePearl && activePearl.location === 'indoor' && petVisible && (
+          <button
+            key={activePearl.key}
+            onClick={collectPearl}
+            style={{
+              position: 'absolute',
+              left: `${activePearl.x}%`,
+              top: `${activePearl.y}%`,
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', padding: 0,
+              zIndex: 8,
+              animation: 'pearlAppear 0.5s ease-out, pearlPulse 1.5s ease-in-out 0.5s infinite'
+            }}
+            aria-label="撿起珍珠"
+          ><Pearl size={36} /></button>
+        )}
+
+        {/* Pet - visible only when indoor */}
+        {petVisible && (
+          <button
+            onClick={() => setShowPetMenu(s => !s)}
+            style={{
+              position: 'absolute', bottom: '15px',
+              left: `${petX}%`, transform: 'translateX(-50%)',
+              background: 'transparent', border: 'none',
+              cursor: 'pointer', padding: 0,
+              transition: 'left 1s linear',
+              animation: petTransition === 'leaving' ? 'petFadeOut 0.6s ease-in forwards' : (petTransition === null && petLocation === 'indoor' ? 'petFadeIn 0.4s ease-out' : 'none'),
+              zIndex: 3
+            }}
+          >
+            <PetSVG size={80} animKey={petAnimKey} ageYears={ageYears} facing={petDir} />
+          </button>
+        )}
+
+        {/* Empty hint OR pet-not-here */}
+        {!petVisible && pet.roomItems.length === 0 && !editingRoom && (
           <div style={{
             position: 'absolute', top: '50%', left: '50%',
             transform: 'translate(-50%, -50%)',
             color: 'rgba(122, 74, 107, 0.5)',
             fontSize: '0.85rem', textAlign: 'center', fontWeight: 600
           }}>
-            點「布置」開始裝飾 ✨<br/>或到「商店」買新家具 🛍️
+            {pet.name} 在外面玩耍～<br/>點「布置」開始裝飾 ✨
+          </div>
+        )}
+        {!petVisible && pet.roomItems.length > 0 && !editingRoom && (
+          <div style={{
+            position: 'absolute', bottom: '15px', left: '50%',
+            transform: 'translateX(-50%)',
+            color: 'rgba(122, 74, 107, 0.4)',
+            fontSize: '0.7rem', fontWeight: 600
+          }}>
+            🌷 {pet.name} 出門了
           </div>
         )}
       </div>
+
+      {/* Status / interaction hint */}
+      {!editingRoom && (
+        <div style={{ textAlign: 'center', marginBottom: '10px', fontSize: '0.75rem', color: '#a06b8a' }}>
+          {petVisible ? (activePearl && activePearl.location === 'indoor' ? '✨ 有珍珠！點起來' : `點 ${pet.name} 互動 💕`) : `${pet.name} 在外面～到「今日」找他`}
+          {petVisible && (
+            <button onClick={renamePet} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '0.7rem', color: '#c089a3', fontFamily: 'inherit',
+              marginLeft: '6px'
+            }}>(改名)</button>
+          )}
+        </div>
+      )}
+
+      {/* Pet menu in room */}
+      {showPetMenu && !showFruitPicker && petVisible && !editingRoom && (
+        <div style={{
+          display: 'flex', gap: '8px', justifyContent: 'center',
+          marginBottom: '12px', flexWrap: 'wrap',
+          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+        }}>
+          <button
+            onClick={() => setShowFruitPicker(true)}
+            className="candy-btn" disabled={totalFruits === 0}
+            style={{
+              padding: '10px 18px', borderRadius: '999px', border: 'none',
+              background: totalFruits === 0 ? 'rgba(255, 209, 220, 0.5)' : 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
+              color: totalFruits === 0 ? '#a06b8a' : 'white',
+              fontWeight: 700, cursor: totalFruits === 0 ? 'default' : 'pointer',
+              fontSize: '0.85rem',
+              boxShadow: totalFruits === 0 ? 'none' : '0 4px 12px rgba(255, 158, 199, 0.4)',
+              fontFamily: 'inherit'
+            }}
+          >🍓 餵食 ({totalFruits})</button>
+          <button
+            onClick={chatWithPet} className="candy-btn"
+            style={{
+              padding: '10px 18px', borderRadius: '999px', border: 'none',
+              background: 'linear-gradient(135deg, #d4b3ff, #c4a3ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.85rem',
+              boxShadow: '0 4px 12px rgba(196, 163, 255, 0.4)',
+              fontFamily: 'inherit'
+            }}
+          >💬 聊天</button>
+        </div>
+      )}
+
+      {showFruitPicker && petVisible && !editingRoom && (
+        <div style={{
+          marginBottom: '12px', padding: '14px',
+          background: 'rgba(255, 255, 255, 0.85)',
+          borderRadius: '18px',
+          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+        }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: '10px'
+          }}>
+            <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '0.9rem' }}>
+              選一顆水果餵 {pet.name}
+            </span>
+            <button
+              onClick={() => setShowFruitPicker(false)}
+              style={{
+                background: 'rgba(255, 209, 220, 0.4)',
+                border: 'none', width: '24px', height: '24px',
+                borderRadius: '50%', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            ><X size={14} color="#a06b8a" /></button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+            {FRUITS.map(f => {
+              const count = pet.fruits[f.id] || 0;
+              const disabled = count === 0;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => !disabled && feedFruit(f.id)}
+                  disabled={disabled} className="candy-btn"
+                  style={{
+                    padding: '8px 14px', borderRadius: '14px', border: '2px solid',
+                    borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
+                    background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
+                    cursor: disabled ? 'default' : 'pointer',
+                    opacity: disabled ? 0.4 : 1,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <span style={{ fontSize: '1.4rem' }}>{f.emoji}</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {editingRoom && (
         <>
@@ -1792,15 +2085,6 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
             }}>長按家具拖移位置 · 點 ❌ 移除</p>
           </div>
         </>
-      )}
-
-      {!editingRoom && pet.roomItems.length > 0 && (
-        <div style={{
-          textAlign: 'center', fontSize: '0.78rem',
-          color: '#a06b8a', padding: '8px'
-        }}>
-          已放置 {pet.roomItems.length} 個小東西 ✨
-        </div>
       )}
     </div>
   );
