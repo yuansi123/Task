@@ -46,9 +46,9 @@ const FRUITS = [
 ];
 
 const DAILY_FRUIT_CAP = 5;
-const PEARL_MIN_INTERVAL_MS = 3 * 60 * 60 * 1000;
-const PEARL_MAX_INTERVAL_MS = 5 * 60 * 60 * 1000;
-const PEARL_VISIBLE_MS = 30 * 1000;
+const PEARL_MIN_INTERVAL_MS = 30 * 60 * 1000; // 30 mins
+const PEARL_MAX_INTERVAL_MS = 90 * 60 * 1000; // 90 mins
+const PEARL_VISIBLE_MS = 60 * 1000; // 60 seconds visible
 
 function xpForLevel(lv) {
   if (lv <= 0) return 0;
@@ -289,8 +289,8 @@ export default function App() {
   const [pet, setPet] = useState(null);
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [petNameInput, setPetNameInput] = useState('');
-  const [showPetMenu, setShowPetMenu] = useState(false);
-  const [showFruitPicker, setShowFruitPicker] = useState(false);
+  // Single state machine: 'closed' | 'menu' | 'fruit'
+  const [petMenuMode, setPetMenuMode] = useState('closed');
   const [petBubble, setPetBubble] = useState(null);
   const [petAnimKey, setPetAnimKey] = useState(0);
   const [petHearts, setPetHearts] = useState(0);
@@ -377,38 +377,38 @@ export default function App() {
   useEffect(() => {
     if (!pet || petTransition) return;
     const triggerTransition = () => {
-      if (Math.random() < 0.3) {
-        if (petLocation === 'outdoor') {
-          setPetTransition('entering');
-          setPetDir(1);
-          const walkInterval = setInterval(() => {
-            setPetX(x => {
-              if (x >= 75) {
-                clearInterval(walkInterval);
-                setTimeout(() => {
-                  setPetLocation('indoor');
-                  setPetX(50);
-                  setPetDir(Math.random() < 0.5 ? -1 : 1);
-                  setPetTransition(null);
-                }, 400);
-                return 78;
-              }
-              return x + 1;
-            });
-          }, 100);
-        } else {
-          setPetTransition('leaving');
-          setTimeout(() => {
-            setPetLocation('outdoor');
-            setPetX(75);
-            setPetDir(-1);
-            setPetTransition(null);
-          }, 600);
-        }
+      if (petLocation === 'outdoor') {
+        setPetTransition('entering');
+        setPetDir(1);
+        const walkInterval = setInterval(() => {
+          setPetX(x => {
+            if (x >= 75) {
+              clearInterval(walkInterval);
+              setTimeout(() => {
+                setPetLocation('indoor');
+                setPetX(50);
+                setPetDir(Math.random() < 0.5 ? -1 : 1);
+                setPetTransition(null);
+              }, 400);
+              return 78;
+            }
+            return x + 1;
+          });
+        }, 100);
+      } else {
+        setPetTransition('leaving');
+        setTimeout(() => {
+          setPetLocation('outdoor');
+          setPetX(75);
+          setPetDir(-1);
+          setPetTransition(null);
+        }, 600);
       }
     };
-    const delay = 60000 + Math.random() * 60000;
-    const t = setTimeout(triggerTransition, delay);
+    const delay = 30000 + Math.random() * 30000; // 30-60 seconds
+    const t = setTimeout(() => {
+      if (Math.random() < 0.4) triggerTransition();
+    }, delay);
     return () => clearTimeout(t);
   }, [pet, petLocation, petTransition]);
 
@@ -624,12 +624,15 @@ export default function App() {
             setShowFruitGain({ emoji: fruit.emoji, name: fruit.name, key: Date.now(), capped: false });
             setTimeout(() => setShowFruitGain(null), 2500);
           }, 600);
-        } else {
+        } else if (todayCount === DAILY_FRUIT_CAP) {
+          // Show cap notice ONCE (when transitioning from 5 to "over"), not on every additional task
+          setPet(p => ({ ...p, dailyFruits: { date: today, count: todayCount + 1 } }));
           setTimeout(() => {
             setShowFruitGain({ emoji: '🌙', name: '今日水果已滿', key: Date.now(), capped: true });
             setTimeout(() => setShowFruitGain(null), 2500);
           }, 600);
         }
+        // todayCount > CAP: silently ignore - no notification
       }
     }
   };
@@ -798,21 +801,20 @@ export default function App() {
     setTimeout(() => setPetHearts(h => Math.max(0, h - 1)), 2000);
     const eatMsgs = ['好好吃喔～', `${fruit.name}最棒了！`, '嚼嚼嚼...', '謝謝你 💗', '好幸福 ✨'];
     showBubble(eatMsgs[Math.floor(Math.random() * eatMsgs.length)]);
-    setShowFruitPicker(false);
-    setShowPetMenu(false);
+    setPetMenuMode('closed');
   };
 
   const chatWithPet = () => {
     const all = [...PET_GREETINGS, ...PET_ENCOURAGEMENTS, ...PET_ENCOURAGEMENTS];
     showBubble(all[Math.floor(Math.random() * all.length)]);
     playDingSound();
-    setShowPetMenu(false);
+    setPetMenuMode('closed');
   };
 
   const renamePet = () => {
     setPetNameInput(pet?.name || '');
     setShowNamePrompt(true);
-    setShowPetMenu(false);
+    setPetMenuMode('closed');
   };
 
   const claimReward = (choice) => {
@@ -1061,8 +1063,11 @@ export default function App() {
               <PetSection
                 pet={pet} petX={petX} petDir={petDir}
                 petLocation={petLocation} petTransition={petTransition}
-                showPetMenu={showPetMenu} setShowPetMenu={setShowPetMenu}
-                showFruitPicker={showFruitPicker} setShowFruitPicker={setShowFruitPicker}
+                showPetMenu={petMenuMode === 'menu'}
+                showFruitPicker={petMenuMode === 'fruit'}
+                openMenu={() => setPetMenuMode(m => m === 'menu' ? 'closed' : 'menu')}
+                openFruitPicker={() => setPetMenuMode('fruit')}
+                closeFruitPicker={() => setPetMenuMode('menu')}
                 petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
                 feedFruit={feedFruit} chatWithPet={chatWithPet}
                 renamePet={renamePet} totalFruits={totalFruits}
@@ -1082,8 +1087,11 @@ export default function App() {
             setShowShop={setShowShop}
             petX={petX} petDir={petDir}
             petLocation={petLocation} petTransition={petTransition}
-            showPetMenu={showPetMenu} setShowPetMenu={setShowPetMenu}
-            showFruitPicker={showFruitPicker} setShowFruitPicker={setShowFruitPicker}
+            showPetMenu={petMenuMode === 'menu'}
+            showFruitPicker={petMenuMode === 'fruit'}
+            openMenu={() => setPetMenuMode(m => m === 'menu' ? 'closed' : 'menu')}
+            openFruitPicker={() => setPetMenuMode('fruit')}
+            closeFruitPicker={() => setPetMenuMode('menu')}
             petBubble={petBubble} petAnimKey={petAnimKey} petHearts={petHearts}
             feedFruit={feedFruit} chatWithPet={chatWithPet}
             renamePet={renamePet} totalFruits={totalFruits}
@@ -1293,6 +1301,14 @@ export default function App() {
         />
       )}
 
+      {petMenuMode === 'fruit' && pet && (
+        <FruitPickerModal
+          pet={pet}
+          feedFruit={feedFruit}
+          onClose={() => setPetMenuMode('closed')}
+        />
+      )}
+
       {showWeeklySummary && weeklyData && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -1347,6 +1363,75 @@ export default function App() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FruitPickerModal({ pet, feedFruit, onClose }) {
+  return (
+    <div style={{
+      position: 'fixed', inset: 0,
+      background: 'rgba(122, 74, 107, 0.5)',
+      backdropFilter: 'blur(10px)',
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+      padding: '16px', zIndex: 220
+    }}>
+      <div style={{
+        background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
+        borderRadius: '24px', padding: '20px 16px 24px',
+        maxWidth: '420px', width: '100%',
+        marginBottom: '90px',
+        border: '3px solid white',
+        boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
+        position: 'relative'
+      }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: '12px'
+        }}>
+          <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '1rem', fontFamily: '"Fredoka", sans-serif' }}>
+            🍓 選一顆水果餵 {pet.name}
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'rgba(255, 209, 220, 0.4)',
+              border: 'none', width: '28px', height: '28px',
+              borderRadius: '50%', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          ><X size={14} color="#a06b8a" /></button>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+          {FRUITS.map(f => {
+            const count = pet.fruits[f.id] || 0;
+            const disabled = count === 0;
+            return (
+              <button
+                key={f.id}
+                onClick={() => !disabled && feedFruit(f.id)}
+                disabled={disabled} className="candy-btn"
+                style={{
+                  padding: '10px 16px', borderRadius: '14px', border: '2px solid',
+                  borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
+                  background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
+                  cursor: disabled ? 'default' : 'pointer',
+                  opacity: disabled ? 0.4 : 1,
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                  fontFamily: 'inherit', minWidth: '60px'
+                }}
+              >
+                <span style={{ fontSize: '1.6rem' }}>{f.emoji}</span>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p style={{
+          fontSize: '0.7rem', color: '#a06b8a',
+          textAlign: 'center', marginTop: '12px', marginBottom: 0
+        }}>每顆水果 +1 經驗值 ✨</p>
+      </div>
     </div>
   );
 }
@@ -1578,7 +1663,7 @@ function ShopModal({ pet, buyFurniture, buyBackground, shopFlash, shopError, onC
   );
 }
 
-function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
+function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu, showFruitPicker, openMenu, openFruitPicker, closeFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const stage = getPetStage(ageYears);
   const ageDisplay = ageYears < 1 ? `${Math.floor(ageYears * 12)}個月` : `${ageYears.toFixed(1)} 歲`;
@@ -1746,7 +1831,7 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
           {/* Pet - visible only when outdoor */}
           {petVisible && (
             <button
-              onClick={() => setShowPetMenu(s => !s)}
+              onClick={openMenu}
               style={{
                 position: 'absolute', bottom: '32px',
                 left: `${petX}%`, transform: 'translateX(-50%)',
@@ -1778,7 +1863,7 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
             animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
           }}>
             <button
-              onClick={() => setShowFruitPicker(true)}
+              onClick={openFruitPicker}
               className="candy-btn" disabled={totalFruits === 0}
               style={{
                 padding: '10px 18px', borderRadius: '999px', border: 'none',
@@ -1803,68 +1888,12 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
             >💬 聊天</button>
           </div>
         )}
-
-        {showFruitPicker && petVisible && petLocation === 'outdoor' && (
-          <div style={{
-            marginTop: '12px', padding: '14px',
-            background: 'rgba(255, 255, 255, 0.7)',
-            borderRadius: '18px',
-            animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-          }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              marginBottom: '10px'
-            }}>
-              <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '0.9rem' }}>
-                選一顆水果餵 {pet.name}
-              </span>
-              <button
-                onClick={() => setShowFruitPicker(false)}
-                style={{
-                  background: 'rgba(255, 209, 220, 0.4)',
-                  border: 'none', width: '24px', height: '24px',
-                  borderRadius: '50%', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              ><X size={14} color="#a06b8a" /></button>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-              {FRUITS.map(f => {
-                const count = pet.fruits[f.id] || 0;
-                const disabled = count === 0;
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => !disabled && feedFruit(f.id)}
-                    disabled={disabled} className="candy-btn"
-                    style={{
-                      padding: '8px 14px', borderRadius: '14px', border: '2px solid',
-                      borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
-                      background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
-                      cursor: disabled ? 'default' : 'pointer',
-                      opacity: disabled ? 0.4 : 1,
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                      fontFamily: 'inherit'
-                    }}
-                  >
-                    <span style={{ fontSize: '1.4rem' }}>{f.emoji}</span>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p style={{
-              fontSize: '0.7rem', color: '#a06b8a',
-              textAlign: 'center', marginTop: '10px', marginBottom: 0
-            }}>每顆水果 +1 經驗值 ✨</p>
-          </div>
-        )}
       </div>
     </div>
   );
 }
 
-function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop, petX, petDir, petLocation, petTransition, showPetMenu, setShowPetMenu, showFruitPicker, setShowFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl, callPetHome }) {
+function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomItem, editingRoom, setEditingRoom, draggingItem, setDraggingItem, setShowShop, petX, petDir, petLocation, petTransition, showPetMenu, showFruitPicker, openMenu, openFruitPicker, closeFruitPicker, petBubble, petAnimKey, petHearts, feedFruit, chatWithPet, renamePet, totalFruits, activePearl, collectPearl, callPetHome }) {
   const ageYears = getPetAgeYears(pet.createdAt);
   const currentBg = BACKGROUNDS.find(b => b.id === pet.currentBg) || BACKGROUNDS[0];
   const ownedFurniture = FURNITURE.filter(f => pet.owned.furniture.includes(f.id));
@@ -2045,7 +2074,7 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
         {/* Pet - visible only when indoor */}
         {petVisible && (
           <button
-            onClick={() => setShowPetMenu(s => !s)}
+            onClick={openMenu}
             style={{
               position: 'absolute', bottom: '15px',
               left: `${petX}%`, transform: 'translateX(-50%)',
@@ -2130,7 +2159,7 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
           animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
         }}>
           <button
-            onClick={() => setShowFruitPicker(true)}
+            onClick={openFruitPicker}
             className="candy-btn" disabled={totalFruits === 0}
             style={{
               padding: '10px 18px', borderRadius: '999px', border: 'none',
@@ -2156,56 +2185,8 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
         </div>
       )}
 
-      {showFruitPicker && petVisible && !editingRoom && petLocation === 'indoor' && (
-        <div style={{
-          marginBottom: '12px', padding: '14px',
-          background: 'rgba(255, 255, 255, 0.85)',
-          borderRadius: '18px',
-          animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-        }}>
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            marginBottom: '10px'
-          }}>
-            <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '0.9rem' }}>
-              選一顆水果餵 {pet.name}
-            </span>
-            <button
-              onClick={() => setShowFruitPicker(false)}
-              style={{
-                background: 'rgba(255, 209, 220, 0.4)',
-                border: 'none', width: '24px', height: '24px',
-                borderRadius: '50%', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
-            ><X size={14} color="#a06b8a" /></button>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-            {FRUITS.map(f => {
-              const count = pet.fruits[f.id] || 0;
-              const disabled = count === 0;
-              return (
-                <button
-                  key={f.id}
-                  onClick={() => !disabled && feedFruit(f.id)}
-                  disabled={disabled} className="candy-btn"
-                  style={{
-                    padding: '8px 14px', borderRadius: '14px', border: '2px solid',
-                    borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
-                    background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
-                    cursor: disabled ? 'default' : 'pointer',
-                    opacity: disabled ? 0.4 : 1,
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                    fontFamily: 'inherit'
-                  }}
-                >
-                  <span style={{ fontSize: '1.4rem' }}>{f.emoji}</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {showFruitPicker && false && (
+        <div />
       )}
 
       {editingRoom && (
@@ -2602,6 +2583,7 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
 }
 
 function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, addSuggestedTask }) {
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const usedNames = new Set(tasks.map(t => t.name));
   const availableSuggestions = SUGGESTED_TASKS.filter(s => !usedNames.has(s.name));
   return (
@@ -2647,41 +2629,61 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, a
         <div style={{
           background: 'rgba(255, 255, 255, 0.85)',
           backdropFilter: 'blur(10px)',
-          borderRadius: '24px', padding: '16px 18px 18px',
+          borderRadius: '24px', padding: '14px 18px',
           marginBottom: '16px',
           border: '2px solid rgba(255, 255, 255, 0.9)',
           boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)'
         }}>
-          <h3 style={{
-            margin: '0 0 4px', color: '#7a4a6b',
-            fontFamily: '"Fredoka", sans-serif', fontSize: '1rem'
-          }}>💡 試試這些</h3>
-          <p style={{
-            margin: '0 0 10px', color: '#a06b8a',
-            fontSize: '0.72rem'
-          }}>點一下就能加入任務清單</p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {availableSuggestions.map((s, i) => (
-              <button
-                key={i}
-                className="chip"
-                onClick={() => addSuggestedTask(s)}
-                style={{
-                  padding: '8px 12px', borderRadius: '999px',
-                  border: '2px dashed #ffb3d9',
-                  background: 'rgba(255, 240, 245, 0.7)',
-                  cursor: 'pointer',
-                  fontSize: '0.82rem', fontWeight: 600,
-                  color: '#5a3a4a',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  fontFamily: 'inherit'
-                }}
-              >
-                <span style={{ fontSize: '1rem' }}>{s.emoji}</span>{s.name}
-                <Plus size={12} strokeWidth={3} color="#ff6b9d" />
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={() => setSuggestionsOpen(o => !o)}
+            style={{
+              width: '100%', background: 'transparent', border: 'none',
+              padding: '4px 0', cursor: 'pointer',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              fontFamily: 'inherit'
+            }}
+          >
+            <span style={{
+              color: '#7a4a6b',
+              fontFamily: '"Fredoka", sans-serif', fontSize: '1rem', fontWeight: 700
+            }}>💡 試試這些 ({availableSuggestions.length})</span>
+            <span style={{
+              color: '#a06b8a', fontSize: '1rem',
+              transform: suggestionsOpen ? 'rotate(180deg)' : 'rotate(0)',
+              transition: 'transform 0.2s'
+            }}>▾</span>
+          </button>
+
+          {suggestionsOpen && (
+            <>
+              <p style={{
+                margin: '6px 0 10px', color: '#a06b8a',
+                fontSize: '0.72rem'
+              }}>點一下就能加入任務清單</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                {availableSuggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    className="chip"
+                    onClick={() => addSuggestedTask(s)}
+                    style={{
+                      padding: '8px 12px', borderRadius: '999px',
+                      border: '2px dashed #ffb3d9',
+                      background: 'rgba(255, 240, 245, 0.7)',
+                      cursor: 'pointer',
+                      fontSize: '0.82rem', fontWeight: 600,
+                      color: '#5a3a4a',
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <span style={{ fontSize: '1rem' }}>{s.emoji}</span>{s.name}
+                    <Plus size={12} strokeWidth={3} color="#ff6b9d" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
