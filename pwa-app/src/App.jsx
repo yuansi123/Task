@@ -75,7 +75,6 @@ const PET_ENCOURAGEMENTS = [
   '不需要完美，做你自己就好', '今天能起床就已經很厲害了！',
   '把難過的事情交給我，我來幫你裝著～', '記得喝水水！我也要喝～',
   '再撐一下下，你超級棒的', '失敗也沒關係，我還是最喜歡你',
-  '你要相信自己 別人才會相信你!', '今天的你也辛苦了',
   '你笑起來最可愛了 ☺️', '謝謝你今天也來看我 💖',
 ];
 
@@ -148,6 +147,79 @@ const BACKGROUNDS = [
 
 const REWARD_AGES = [1, 3, 5, 10];
 
+// Keyword -> emoji mapping for custom mood/body labels
+// Order matters: more specific keywords first
+const MOOD_KEYWORDS = [
+  { keys: ['哭', '難過', '傷心', '心碎', '痛苦', '失望', '委屈'], emoji: '😢' },
+  { keys: ['憂鬱', '抑鬱', '低落', '消沉', '無力', '空虛', '絕望', '想死', '不想活'], emoji: '😔' },
+  { keys: ['生氣', '憤怒', '火大', '氣炸', '抓狂', '惱怒', '不爽', '幹', '靠'], emoji: '😠' },
+  { keys: ['焦慮', '緊張', '不安', '害怕', '擔心', '恐懼', '驚慌', '焦躁'], emoji: '😰' },
+  { keys: ['累', '疲憊', '疲倦', '沒精神', '想睡', '虛'], emoji: '😪' },
+  { keys: ['無聊', '乏味', '沒事做', '提不起勁'], emoji: '😑' },
+  { keys: ['孤單', '寂寞', '一個人', '想念', '思念', '想'], emoji: '🥺' },
+  { keys: ['開心', '快樂', '愉快', '高興', '爽', '哈哈', '笑'], emoji: '😊' },
+  { keys: ['幸福', '甜', '甜蜜', '滿足', '溫馨', '溫暖'], emoji: '🥰' },
+  { keys: ['平靜', '放鬆', '舒服', '安心', '寧靜'], emoji: '😌' },
+  { keys: ['興奮', '激動', '期待', '雀躍', '熱血'], emoji: '🤩' },
+  { keys: ['感恩', '感謝', '感激'], emoji: '🙏' },
+  { keys: ['尷尬', '糗', '丟臉', '不好意思'], emoji: '😅' },
+  { keys: ['驚訝', '震驚', '嚇到', '意外'], emoji: '😲' },
+  { keys: ['害羞', '靦腆', '臉紅'], emoji: '☺️' },
+  { keys: ['生病', '不舒服'], emoji: '🤒' },
+  { keys: ['忙', '充實'], emoji: '💼' },
+  { keys: ['思考', '迷惘', '困惑', '猶豫'], emoji: '🤔' },
+  { keys: ['期待'], emoji: '✨' },
+];
+
+const BODY_KEYWORDS = [
+  { keys: ['頭痛', '頭暈', '偏頭痛'], emoji: '🤕' },
+  { keys: ['肚子痛', '腹痛', '胃痛', '經痛'], emoji: '😣' },
+  { keys: ['想吐', '噁心', '反胃'], emoji: '🤢' },
+  { keys: ['發燒', '燒'], emoji: '🤒' },
+  { keys: ['感冒', '流鼻水', '咳嗽', '喉嚨痛', '鼻塞'], emoji: '🤧' },
+  { keys: ['累', '疲倦', '疲憊', '沒力', '虛'], emoji: '😴' },
+  { keys: ['有活力', '精神好', '元氣', '能量'], emoji: '💪' },
+  { keys: ['想睡', '睏', '愛睏'], emoji: '🥱' },
+  { keys: ['痠痛', '酸痛', '腰痛', '背痛', '肩膀'], emoji: '😖' },
+  { keys: ['好', '健康', '舒服', '狀態好'], emoji: '✨' },
+  { keys: ['過敏', '癢', '紅腫'], emoji: '🤧' },
+  { keys: ['失眠', '睡不著', '睡不好'], emoji: '🌙' },
+  { keys: ['便秘'], emoji: '💩' },
+  { keys: ['腹瀉', '拉肚子'], emoji: '🚽' },
+  { keys: ['牙痛'], emoji: '🦷' },
+  { keys: ['眼睛痛', '眼睛累', '眼睛'], emoji: '👁️' },
+  { keys: ['口乾', '口渴'], emoji: '💧' },
+  { keys: ['餓'], emoji: '🍽️' },
+  { keys: ['飽', '撐'], emoji: '🍱' },
+  { keys: ['冷'], emoji: '🥶' },
+  { keys: ['熱'], emoji: '🥵' },
+  { keys: ['頻尿'], emoji: '🚻' },
+];
+
+function detectMoodEmoji(text) {
+  const lower = text.toLowerCase();
+  for (const { keys, emoji } of MOOD_KEYWORDS) {
+    for (const k of keys) {
+      if (lower.includes(k.toLowerCase())) return emoji;
+    }
+  }
+  return '✨'; // default
+}
+
+function detectBodyEmoji(text) {
+  const lower = text.toLowerCase();
+  for (const { keys, emoji } of BODY_KEYWORDS) {
+    for (const k of keys) {
+      if (lower.includes(k.toLowerCase())) return emoji;
+    }
+  }
+  return '💫'; // default
+}
+
+// Helper to read custom item label whether it's a string (legacy) or object {label, emoji}
+function customLabel(c) { return typeof c === 'string' ? c : c.label; }
+function customEmoji(c, fallback) { return typeof c === 'string' ? fallback : (c.emoji || fallback); }
+
 // Birthday letters: pet writes to owner each year
 function getBirthdayLetter(age, petName) {
   const letters = {
@@ -214,6 +286,243 @@ function pickRewardChoices(age, owned) {
   if (available.length === 0) return [];
   const shuffled = [...available].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(3, available.length));
+}
+
+// === Period tracking ===
+
+function parseDateKey(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function daysBetween(d1, d2) {
+  const ms = d2.getTime() - d1.getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+// Find all period start dates from diaries.
+// A "period start" is a day where 'period' is logged AND the day before is NOT.
+function findPeriodStarts(diaries) {
+  const periodDays = Object.keys(diaries)
+    .filter(key => diaries[key]?.body?.includes('period'))
+    .sort();
+
+  if (periodDays.length === 0) return [];
+
+  const starts = [];
+  for (const day of periodDays) {
+    const date = parseDateKey(day);
+    const yesterday = new Date(date);
+    yesterday.setDate(date.getDate() - 1);
+    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    if (!diaries[yesterdayKey]?.body?.includes('period')) {
+      starts.push(day);
+    }
+  }
+  return starts;
+}
+
+// Find the length of each period (consecutive 'period' days)
+function findPeriodLengths(diaries) {
+  const starts = findPeriodStarts(diaries);
+  return starts.map(startKey => {
+    let count = 1;
+    let date = parseDateKey(startKey);
+    while (true) {
+      date.setDate(date.getDate() + 1);
+      const k = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      if (diaries[k]?.body?.includes('period')) count++;
+      else break;
+    }
+    return { startKey, length: count };
+  });
+}
+
+// Calculate cycle stats from period starts
+function calculateCycleStats(diaries, manualCycle) {
+  const starts = findPeriodStarts(diaries);
+  const lengths = findPeriodLengths(diaries);
+
+  if (starts.length === 0) return null;
+
+  const lastStart = starts[starts.length - 1];
+  const lastStartDate = parseDateKey(lastStart);
+
+  // Cycle lengths between consecutive period starts
+  const cycleLengths = [];
+  for (let i = 1; i < starts.length; i++) {
+    const prev = parseDateKey(starts[i - 1]);
+    const curr = parseDateKey(starts[i]);
+    cycleLengths.push(daysBetween(prev, curr));
+  }
+
+  const avgCycle = manualCycle ||
+    (cycleLengths.length > 0
+      ? Math.round(cycleLengths.reduce((s, n) => s + n, 0) / cycleLengths.length)
+      : 28);
+
+  const avgPeriodLength = lengths.length > 0
+    ? Math.round(lengths.reduce((s, l) => s + l.length, 0) / lengths.length)
+    : 5;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const lastDay = new Date(lastStartDate);
+  lastDay.setHours(0, 0, 0, 0);
+  const daysSinceLastStart = daysBetween(lastDay, today);
+
+  // Predict next period start
+  const nextStart = new Date(lastStartDate);
+  nextStart.setDate(lastStartDate.getDate() + avgCycle);
+  const daysUntilNext = daysBetween(today, nextStart);
+
+  // Determine current phase
+  let phase = 'unknown';
+  let phaseLabel = '';
+  let phaseEmoji = '';
+  // Currently in period? Check if today has period logged
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const isPeriodToday = diaries[todayKey]?.body?.includes('period');
+
+  if (isPeriodToday) {
+    phase = 'period';
+    phaseLabel = '月經期';
+    phaseEmoji = '🩸';
+  } else if (daysSinceLastStart < avgPeriodLength) {
+    phase = 'period';
+    phaseLabel = '月經期';
+    phaseEmoji = '🩸';
+  } else if (daysSinceLastStart < avgCycle - 14 - 2) {
+    phase = 'follicular';
+    phaseLabel = '卵泡期';
+    phaseEmoji = '🌷';
+  } else if (daysSinceLastStart < avgCycle - 14 + 2) {
+    phase = 'ovulation';
+    phaseLabel = '排卵期';
+    phaseEmoji = '🌸';
+  } else if (daysSinceLastStart < avgCycle - 5) {
+    phase = 'luteal';
+    phaseLabel = '黃體期';
+    phaseEmoji = '🌙';
+  } else {
+    phase = 'pms';
+    phaseLabel = 'PMS 期';
+    phaseEmoji = '💜';
+  }
+
+  return {
+    starts,
+    lengths,
+    cycleLengths,
+    avgCycle,
+    avgPeriodLength,
+    lastStart,
+    lastStartDate,
+    daysSinceLastStart,
+    nextStart,
+    daysUntilNext,
+    cycleDay: daysSinceLastStart + 1,
+    phase, phaseLabel, phaseEmoji,
+    isPeriodToday,
+  };
+}
+
+// Get day type for calendar marking
+// Returns: 'period' | 'predicted-period' | 'ovulation' | 'pms' | null
+function getDayType(date, diaries, stats) {
+  if (!stats) return null;
+  const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+  // Logged period takes priority
+  if (diaries[key]?.body?.includes('period')) return 'period';
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayCheck = new Date(date);
+  dayCheck.setHours(0, 0, 0, 0);
+
+  // Only show predictions for future dates (or recent past with no log)
+  if (dayCheck < today) return null;
+
+  // Days from last period start
+  const daysFromLastStart = daysBetween(stats.lastStartDate, dayCheck);
+  const cycleNum = Math.floor(daysFromLastStart / stats.avgCycle);
+  const dayInCycle = daysFromLastStart - cycleNum * stats.avgCycle;
+
+  // Predicted period (next cycle's first few days)
+  if (cycleNum > 0 && dayInCycle >= 0 && dayInCycle < stats.avgPeriodLength) {
+    return 'predicted-period';
+  }
+
+  // Ovulation: middle of cycle (cycle - 14 ± 2)
+  const ovulationDay = stats.avgCycle - 14;
+  if (Math.abs(dayInCycle - ovulationDay) <= 2) return 'ovulation';
+
+  // PMS: 5 days before next period
+  if (dayInCycle >= stats.avgCycle - 5 && dayInCycle < stats.avgCycle) return 'pms';
+
+  return null;
+}
+
+// Aggregate moods/body symptoms by phase
+function aggregateByPhase(diaries, stats) {
+  if (!stats || stats.starts.length === 0) return null;
+  const buckets = { period: [], follicular: [], ovulation: [], luteal: [], pms: [] };
+
+  for (const dayKey of Object.keys(diaries)) {
+    const d = diaries[dayKey];
+    if (!d) continue;
+    const date = parseDateKey(dayKey);
+    // Find which cycle this date belongs to
+    let phaseForDay = null;
+    for (let i = 0; i < stats.starts.length; i++) {
+      const startDate = parseDateKey(stats.starts[i]);
+      const nextStartDate = i + 1 < stats.starts.length
+        ? parseDateKey(stats.starts[i + 1])
+        : new Date(startDate.getTime() + stats.avgCycle * 86400000);
+      if (date >= startDate && date < nextStartDate) {
+        const dayInCycle = daysBetween(startDate, date);
+        if (dayInCycle < stats.avgPeriodLength) phaseForDay = 'period';
+        else if (dayInCycle < stats.avgCycle - 14 - 2) phaseForDay = 'follicular';
+        else if (dayInCycle < stats.avgCycle - 14 + 2) phaseForDay = 'ovulation';
+        else if (dayInCycle < stats.avgCycle - 5) phaseForDay = 'luteal';
+        else phaseForDay = 'pms';
+        break;
+      }
+    }
+    if (!phaseForDay) continue;
+
+    for (const moodId of (d.moods || [])) {
+      buckets[phaseForDay].push({ type: 'mood', id: moodId });
+    }
+    for (const bodyId of (d.body || [])) {
+      if (bodyId === 'period') continue;
+      buckets[phaseForDay].push({ type: 'body', id: bodyId });
+    }
+  }
+
+  // Convert to top-3 frequency per phase
+  const result = {};
+  for (const phase of Object.keys(buckets)) {
+    const counts = {};
+    for (const item of buckets[phase]) {
+      const key = `${item.type}:${item.id}`;
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    const sorted = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([key, count]) => {
+        const [type, id] = key.split(':');
+        const opt = type === 'mood'
+          ? MOOD_OPTIONS.find(o => o.id === id)
+          : BODY_OPTIONS.find(o => o.id === id);
+        return opt ? { ...opt, count, type } : null;
+      })
+      .filter(Boolean);
+    result[phase] = sorted;
+  }
+  return result;
 }
 
 function Pearl({ size = 32 }) {
@@ -931,6 +1240,32 @@ export default function App() {
 
   const chatWithPet = () => {
     const all = [...PET_GREETINGS, ...PET_ENCOURAGEMENTS, ...PET_ENCOURAGEMENTS];
+    // Add cycle-aware messages with higher chance
+    if (cycleStats) {
+      const { daysUntilNext, isPeriodToday, phase } = cycleStats;
+      if (isPeriodToday || phase === 'period') {
+        all.push(
+          '今天身體辛苦了～多喝點溫水吧 💗',
+          '記得多休息喔，肚子痛的話可以暖暖的～',
+          '我會陪在你身邊的 🩸💕',
+        );
+      } else if (daysUntilNext >= 0 && daysUntilNext <= 3) {
+        all.push(
+          `下次月經預計 ${daysUntilNext} 天後喔，記得備好衛生用品～`,
+          '快來月經了，最近多照顧自己 🌸',
+          '感覺到變化了嗎？我都記得幫你提醒 💗',
+        );
+      } else if (phase === 'pms') {
+        all.push(
+          'PMS 期間情緒可能會起伏，沒關係的 💜',
+          '想哭就哭、想吃就吃，我都陪你 🌙',
+        );
+      } else if (phase === 'ovulation') {
+        all.push(
+          '現在是排卵期，身體會比較敏感喔～ 🌸',
+        );
+      }
+    }
     showBubble(all[Math.floor(Math.random() * all.length)]);
     playDingSound();
     setPetMenuMode('closed');
@@ -1033,6 +1368,7 @@ export default function App() {
 
   const totalFruits = pet ? Object.values(pet.fruits).reduce((s, v) => s + v, 0) : 0;
   const todayFruitCount = pet && pet.dailyFruits.date === todayKey() ? pet.dailyFruits.count : 0;
+  const cycleStats = calculateCycleStats(diaries, null);
 
   return (
     <div style={{
@@ -1199,6 +1535,7 @@ export default function App() {
       <div style={{ position: 'relative', zIndex: 2 }}>
         {view === 'today' && (
           <>
+            {cycleStats && <CycleCard stats={cycleStats} />}
             <TodayView
               tasks={tasks} todayChecks={todayChecks}
               completedToday={completedToday} allDoneToday={allDoneToday}
@@ -1261,6 +1598,7 @@ export default function App() {
             month={calendarMonth} setMonth={setCalendarMonth}
             selectedDate={selectedDate} setSelectedDate={setSelectedDate}
             dateKey={dateKey}
+            cycleStats={cycleStats}
           />
         )}
 
@@ -2168,12 +2506,14 @@ function PetSection({ pet, petX, petDir, petLocation, petTransition, showPetMenu
             <div style={{
               position: 'absolute', top: '8px',
               left: `${petX}%`, transform: 'translateX(-50%)',
-              background: 'white', padding: '6px 12px',
+              background: 'white', padding: '8px 12px',
               borderRadius: '14px', border: '2px solid #ffd1dc',
               boxShadow: '0 4px 12px rgba(255, 158, 199, 0.3)',
               fontSize: '0.78rem', fontWeight: 600, color: '#5a3a4a',
-              whiteSpace: 'nowrap', maxWidth: '180px',
-              overflow: 'hidden', textOverflow: 'ellipsis',
+              maxWidth: 'min(260px, 80vw)',
+              wordBreak: 'break-word',
+              textAlign: 'center',
+              lineHeight: 1.4,
               zIndex: 10,
               animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
             }}>{petBubble.text}</div>
@@ -2426,12 +2766,14 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
           <div style={{
             position: 'absolute', top: '8px',
             left: `${petX}%`, transform: 'translateX(-50%)',
-            background: 'white', padding: '6px 12px',
+            background: 'white', padding: '8px 12px',
             borderRadius: '14px', border: '2px solid #ffd1dc',
             boxShadow: '0 4px 12px rgba(255, 158, 199, 0.3)',
             fontSize: '0.78rem', fontWeight: 600, color: '#5a3a4a',
-            whiteSpace: 'nowrap', maxWidth: '180px',
-            overflow: 'hidden', textOverflow: 'ellipsis',
+            maxWidth: 'min(260px, 80vw)',
+            wordBreak: 'break-word',
+            textAlign: 'center',
+            lineHeight: 1.4,
             zIndex: 10,
             animation: 'bubbleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
           }}>{petBubble.text}</div>
@@ -2643,6 +2985,68 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
   );
 }
 
+function CycleCard({ stats }) {
+  const { phase, phaseLabel, phaseEmoji, daysUntilNext, cycleDay, avgCycle, isPeriodToday } = stats;
+
+  // Color theme by phase
+  const themes = {
+    period:     { bg: 'linear-gradient(135deg, #ffe4e8, #ffc4d0)', border: '#ff8aa3', text: '#a04060' },
+    follicular: { bg: 'linear-gradient(135deg, #fff0f5, #ffe4ec)', border: '#ffb3d9', text: '#a04077' },
+    ovulation:  { bg: 'linear-gradient(135deg, #ffeacc, #ffd9b3)', border: '#ffaa66', text: '#a06040' },
+    luteal:     { bg: 'linear-gradient(135deg, #e8e0ff, #d4c4ff)', border: '#a98aff', text: '#6b4aa0' },
+    pms:        { bg: 'linear-gradient(135deg, #f0e0ff, #e0c4ff)', border: '#c489ff', text: '#7a4aa0' },
+  };
+  const theme = themes[phase] || themes.follicular;
+
+  // Headline
+  let headline;
+  if (isPeriodToday || phase === 'period') {
+    headline = `🩸 月經中，辛苦你了`;
+  } else if (daysUntilNext < 0) {
+    headline = `📅 月經比預計晚了 ${-daysUntilNext} 天`;
+  } else if (daysUntilNext === 0) {
+    headline = `🩸 月經預計就是今天`;
+  } else if (daysUntilNext <= 3) {
+    headline = `⚠️ 月經預計 ${daysUntilNext} 天後，記得備好用品`;
+  } else {
+    headline = `⏰ 距離下次月經 ${daysUntilNext} 天`;
+  }
+
+  return (
+    <div style={{ padding: '0 20px 16px' }}>
+      <div style={{
+        background: theme.bg,
+        backdropFilter: 'blur(10px)',
+        borderRadius: '20px',
+        padding: '14px 16px',
+        border: `2px solid ${theme.border}`,
+        boxShadow: '0 4px 16px rgba(255, 158, 199, 0.2)'
+      }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          marginBottom: '6px'
+        }}>
+          <span style={{
+            fontSize: '0.95rem', fontWeight: 700, color: theme.text,
+            fontFamily: '"Fredoka", sans-serif'
+          }}>{headline}</span>
+          <span style={{
+            fontSize: '1.4rem'
+          }}>{phaseEmoji}</span>
+        </div>
+        <div style={{
+          display: 'flex', gap: '16px', fontSize: '0.75rem',
+          color: theme.text, opacity: 0.85, fontWeight: 600
+        }}>
+          <span>目前：{phaseLabel}</span>
+          <span>週期第 {cycleDay} 天</span>
+          <span>平均 {avgCycle} 天</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTask, todayFruitCount }) {
   return (
     <div style={{ padding: '0 20px' }}>
@@ -2772,28 +3176,36 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
   const saveMoodCustom = () => {
     if (!moodInput.trim()) return;
     const val = moodInput.trim();
+    const emoji = detectMoodEmoji(val);
     const today = todayKey();
     updateDiary(today, d => ({
-      ...d, moodsCustom: d.moodsCustom.includes(val) ? d.moodsCustom : [...d.moodsCustom, val]
+      ...d,
+      moodsCustom: d.moodsCustom.some(c => customLabel(c) === val)
+        ? d.moodsCustom
+        : [...d.moodsCustom, { label: val, emoji }]
     }));
     setMoodInput(''); playDingSound(); flashSaved('mood');
   };
   const removeMoodCustom = (val) => {
     const today = todayKey();
-    updateDiary(today, d => ({ ...d, moodsCustom: d.moodsCustom.filter(m => m !== val) }));
+    updateDiary(today, d => ({ ...d, moodsCustom: d.moodsCustom.filter(c => customLabel(c) !== val) }));
   };
   const saveBodyCustom = () => {
     if (!bodyInput.trim()) return;
     const val = bodyInput.trim();
+    const emoji = detectBodyEmoji(val);
     const today = todayKey();
     updateDiary(today, d => ({
-      ...d, bodyCustom: d.bodyCustom.includes(val) ? d.bodyCustom : [...d.bodyCustom, val]
+      ...d,
+      bodyCustom: d.bodyCustom.some(c => customLabel(c) === val)
+        ? d.bodyCustom
+        : [...d.bodyCustom, { label: val, emoji }]
     }));
     setBodyInput(''); playDingSound(); flashSaved('body');
   };
   const removeBodyCustom = (val) => {
     const today = todayKey();
-    updateDiary(today, d => ({ ...d, bodyCustom: d.bodyCustom.filter(b => b !== val) }));
+    updateDiary(today, d => ({ ...d, bodyCustom: d.bodyCustom.filter(c => customLabel(c) !== val) }));
   };
   const saveText = () => {
     const today = todayKey();
@@ -2847,14 +3259,20 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
               </button>
             );
           })}
-          {diary.moodsCustom.map((c, i) => (
-            <button key={`custom-${i}`} className="chip" onClick={() => removeMoodCustom(c)} style={{
-              border: '2.5px solid #ff9ec7', background: '#ff9ec730',
-              padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
-              fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
-              display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit'
-            }} title="點擊移除">✨ {c} <X size={12} /></button>
-          ))}
+          {diary.moodsCustom.map((c, i) => {
+            const label = customLabel(c);
+            const emoji = customEmoji(c, '✨');
+            return (
+              <button key={`custom-${i}`} className="chip" onClick={() => removeMoodCustom(label)} style={{
+                border: '2.5px solid #ff9ec7', background: '#ff9ec730',
+                padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
+                fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
+                display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit'
+              }} title="點擊移除">
+                <span style={{ fontSize: '1.1rem' }}>{emoji}</span>{label} <X size={12} />
+              </button>
+            );
+          })}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
@@ -2890,14 +3308,20 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
               </button>
             );
           })}
-          {diary.bodyCustom.map((c, i) => (
-            <button key={`bcustom-${i}`} className="chip" onClick={() => removeBodyCustom(c)} style={{
-              border: '2.5px solid #c4a3ff', background: '#c4a3ff30',
-              padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
-              fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
-              display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit'
-            }} title="點擊移除">💫 {c} <X size={12} /></button>
-          ))}
+          {diary.bodyCustom.map((c, i) => {
+            const label = customLabel(c);
+            const emoji = customEmoji(c, '💫');
+            return (
+              <button key={`bcustom-${i}`} className="chip" onClick={() => removeBodyCustom(label)} style={{
+                border: '2.5px solid #c4a3ff', background: '#c4a3ff30',
+                padding: '8px 14px', borderRadius: '999px', cursor: 'pointer',
+                fontSize: '0.9rem', fontWeight: 600, color: '#5a3a4a',
+                display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'inherit'
+              }} title="點擊移除">
+                <span style={{ fontSize: '1.1rem' }}>{emoji}</span>{label} <X size={12} />
+              </button>
+            );
+          })}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
           <input
@@ -3075,7 +3499,75 @@ function ManageView({ tasks, newTaskName, setNewTaskName, addTask, deleteTask, a
   );
 }
 
-function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, setSelectedDate, dateKey }) {
+function PhaseInsights({ diaries, stats }) {
+  const phaseData = aggregateByPhase(diaries, stats);
+  if (!phaseData || stats.starts.length < 2) {
+    // Need at least 2 cycles to make this useful
+    return null;
+  }
+  const phases = [
+    { id: 'period', label: '月經期', emoji: '🩸', color: '#ff5577' },
+    { id: 'follicular', label: '卵泡期', emoji: '🌷', color: '#ff9ec7' },
+    { id: 'ovulation', label: '排卵期', emoji: '🌸', color: '#ffaa66' },
+    { id: 'luteal', label: '黃體期', emoji: '🌙', color: '#a98aff' },
+    { id: 'pms', label: 'PMS 期', emoji: '💜', color: '#c489ff' },
+  ];
+  const hasAnyData = phases.some(p => phaseData[p.id]?.length > 0);
+  if (!hasAnyData) return null;
+
+  return (
+    <div style={{
+      background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)',
+      borderRadius: '24px', padding: '18px 16px',
+      border: '2px solid rgba(255, 255, 255, 0.9)',
+      boxShadow: '0 8px 24px rgba(255, 158, 199, 0.15)',
+      marginTop: '16px'
+    }}>
+      <h3 style={{
+        margin: '0 0 4px', color: '#7a4a6b',
+        fontFamily: '"Fredoka", sans-serif', fontSize: '1rem'
+      }}>📊 各時期最常見狀態</h3>
+      <p style={{
+        margin: '0 0 12px', color: '#a06b8a',
+        fontSize: '0.7rem'
+      }}>從你過去的日記資料整理出來的</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {phases.map(p => {
+          const items = phaseData[p.id] || [];
+          if (items.length === 0) return null;
+          return (
+            <div key={p.id} style={{
+              padding: '10px 12px',
+              background: 'rgba(255, 240, 245, 0.5)',
+              borderRadius: '12px',
+              borderLeft: `3px solid ${p.color}`
+            }}>
+              <div style={{
+                fontSize: '0.78rem', fontWeight: 700,
+                color: '#5a3a4a', marginBottom: '6px'
+              }}>{p.emoji} {p.label}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                {items.map((item, i) => (
+                  <span key={i} style={{
+                    padding: '4px 10px', borderRadius: '999px',
+                    background: `${item.color}30`, border: `1.5px solid ${item.color}`,
+                    fontSize: '0.75rem', fontWeight: 600, color: '#5a3a4a',
+                    display: 'flex', alignItems: 'center', gap: '4px'
+                  }}>
+                    <span>{item.emoji}</span>{item.label}
+                    <span style={{ opacity: 0.6, fontSize: '0.65rem' }}>×{item.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, setSelectedDate, dateKey, cycleStats }) {
   const year = month.getFullYear();
   const m = month.getMonth();
   const firstDay = new Date(year, m, 1).getDay();
@@ -3139,6 +3631,15 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             const isToday = k === todayStr;
             const isSelected = k === selectedKey;
             const hasDiary = hasDiaryEntry(k);
+            const dayType = getDayType(cellDate, diaries, cycleStats);
+
+            // Cycle dot color
+            let cycleDot = null;
+            if (dayType === 'period') cycleDot = '#ff5577';
+            else if (dayType === 'predicted-period') cycleDot = '#ffaabb';
+            else if (dayType === 'ovulation') cycleDot = '#ffaa66';
+            else if (dayType === 'pms') cycleDot = '#c489ff';
+
             let bg = 'transparent';
             if (ratio === 1 && tasks.length > 0) bg = 'linear-gradient(135deg, #ff9ec7, #c4a3ff)';
             else if (ratio >= 0.5) bg = 'linear-gradient(135deg, #ffd1dc, #d4b3ff)';
@@ -3160,11 +3661,46 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                 {hasDiary && (
                   <div style={{ position: 'absolute', bottom: '3px', right: '4px', fontSize: '0.5rem' }}>📖</div>
                 )}
+                {cycleDot && (
+                  <div style={{
+                    position: 'absolute', top: '3px', left: '4px',
+                    width: '6px', height: '6px', borderRadius: '50%',
+                    background: cycleDot,
+                    boxShadow: dayType === 'predicted-period' ? `0 0 0 1.5px white` : 'none'
+                  }} />
+                )}
               </button>
             );
           })}
         </div>
+        {cycleStats && (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px',
+            padding: '10px 12px', background: 'rgba(255, 255, 255, 0.5)',
+            borderRadius: '12px', fontSize: '0.7rem', color: '#7a4a6b',
+            justifyContent: 'center'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff5577' }} />
+              月經
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffaabb', boxShadow: '0 0 0 1.5px white' }} />
+              預測月經
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffaa66' }} />
+              排卵期
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#c489ff' }} />
+              PMS
+            </span>
+          </div>
+        )}
       </div>
+
+      {cycleStats && <PhaseInsights diaries={diaries} stats={cycleStats} />}
 
       {selectedDate && (
         <div style={{
@@ -3216,7 +3752,7 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                     padding: '6px 12px', borderRadius: '999px',
                     background: '#ff9ec730', border: '2px solid #ff9ec7',
                     fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
-                  }}>✨ {c}</span>
+                  }}>{customEmoji(c, '✨')} {customLabel(c)}</span>
                 ))}
               </div>
             </>
@@ -3239,7 +3775,7 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
                     padding: '6px 12px', borderRadius: '999px',
                     background: '#c4a3ff30', border: '2px solid #c4a3ff',
                     fontSize: '0.85rem', fontWeight: 600, color: '#5a3a4a'
-                  }}>💫 {c}</span>
+                  }}>{customEmoji(c, '💫')} {customLabel(c)}</span>
                 ))}
               </div>
             </>
