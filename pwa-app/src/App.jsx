@@ -1530,76 +1530,87 @@ export default function App() {
 
 function FruitPickerModal({ pet, feedFruit, onClose }) {
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(122, 74, 107, 0.45)',
-        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
-        zIndex: 220,
-        animation: 'modalFade 0.15s ease-out'
-      }}
-    >
+    <>
+      {/* Overlay */}
       <div
-        onClick={e => e.stopPropagation()}
+        onClick={onClose}
         style={{
-          background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
-          borderRadius: '24px 24px 0 0',
-          padding: '20px 16px calc(24px + env(safe-area-inset-bottom))',
-          maxWidth: '480px', width: '100%',
-          border: '3px solid white', borderBottom: 'none',
-          boxShadow: '0 -10px 40px rgba(196, 77, 255, 0.3)',
-          position: 'relative'
+          position: 'fixed', inset: 0,
+          background: 'rgba(122, 74, 107, 0.45)',
+          zIndex: 220
+        }}
+      />
+      {/* Sheet pinned to bottom - no flex, no animation */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0, left: 0, right: 0,
+          zIndex: 221,
+          display: 'flex', justifyContent: 'center',
+          pointerEvents: 'none'
         }}
       >
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          marginBottom: '12px'
-        }}>
-          <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '1rem', fontFamily: '"Fredoka", sans-serif' }}>
-            🍓 選一顆水果餵 {pet.name}
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255, 209, 220, 0.4)',
-              border: 'none', width: '32px', height: '32px',
-              borderRadius: '50%', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}
-          ><X size={16} color="#a06b8a" /></button>
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
+            borderRadius: '24px 24px 0 0',
+            padding: '20px 16px calc(24px + env(safe-area-inset-bottom))',
+            maxWidth: '480px', width: '100%',
+            border: '3px solid white', borderBottom: 'none',
+            boxShadow: '0 -10px 40px rgba(196, 77, 255, 0.3)',
+            pointerEvents: 'auto'
+          }}
+        >
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: '12px'
+          }}>
+            <span style={{ fontWeight: 700, color: '#7a4a6b', fontSize: '1rem', fontFamily: '"Fredoka", sans-serif' }}>
+              🍓 選一顆水果餵 {pet.name}
+            </span>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'rgba(255, 209, 220, 0.4)',
+                border: 'none', width: '32px', height: '32px',
+                borderRadius: '50%', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            ><X size={16} color="#a06b8a" /></button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+            {FRUITS.map(f => {
+              const count = pet.fruits[f.id] || 0;
+              const disabled = count === 0;
+              return (
+                <button
+                  key={f.id}
+                  onClick={() => !disabled && feedFruit(f.id)}
+                  disabled={disabled} className="candy-btn"
+                  style={{
+                    padding: '12px 18px', borderRadius: '14px', border: '2px solid',
+                    borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
+                    background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
+                    cursor: disabled ? 'default' : 'pointer',
+                    opacity: disabled ? 0.4 : 1,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
+                    fontFamily: 'inherit', minWidth: '64px'
+                  }}
+                >
+                  <span style={{ fontSize: '1.8rem' }}>{f.emoji}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <p style={{
+            fontSize: '0.7rem', color: '#a06b8a',
+            textAlign: 'center', marginTop: '12px', marginBottom: 0
+          }}>每顆水果 +1 經驗值 ✨</p>
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-          {FRUITS.map(f => {
-            const count = pet.fruits[f.id] || 0;
-            const disabled = count === 0;
-            return (
-              <button
-                key={f.id}
-                onClick={() => !disabled && feedFruit(f.id)}
-                disabled={disabled} className="candy-btn"
-                style={{
-                  padding: '12px 18px', borderRadius: '14px', border: '2px solid',
-                  borderColor: disabled ? 'rgba(255, 209, 220, 0.3)' : '#ffb3d9',
-                  background: disabled ? 'rgba(255, 240, 245, 0.4)' : 'white',
-                  cursor: disabled ? 'default' : 'pointer',
-                  opacity: disabled ? 0.4 : 1,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px',
-                  fontFamily: 'inherit', minWidth: '64px'
-                }}
-              >
-                <span style={{ fontSize: '1.8rem' }}>{f.emoji}</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a3a4a' }}>×{count}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p style={{
-          fontSize: '0.7rem', color: '#a06b8a',
-          textAlign: 'center', marginTop: '12px', marginBottom: 0
-        }}>每顆水果 +1 經驗值 ✨</p>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -2256,13 +2267,26 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
     <div style={{ padding: '0 20px' }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '12px', padding: '0 4px'
+        marginBottom: '12px', padding: '0 4px', flexWrap: 'wrap', gap: '6px'
       }}>
         <h3 style={{
           margin: 0, fontFamily: '"Fredoka", sans-serif', color: '#7a4a6b',
           fontSize: '1.1rem'
         }}>🏠 {pet.name} 的小窩</h3>
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {!petVisible && !editingRoom && (
+            <button
+              onClick={callPetHome}
+              className="candy-btn"
+              style={{
+                padding: '8px 12px', borderRadius: '14px', border: 'none',
+                background: 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
+                color: 'white', fontWeight: 700, cursor: 'pointer',
+                fontSize: '0.8rem', fontFamily: 'inherit',
+                boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)'
+              }}
+            >📣 叫回家</button>
+          )}
           <button
             onClick={() => setShowShop(true)}
             className="candy-btn"
@@ -2467,51 +2491,7 @@ function RoomView({ pet, setBackground, addRoomItem, removeRoomItem, moveRoomIte
         )}
 
         {/* Empty hint OR pet-not-here */}
-        {!petVisible && pet.roomItems.length === 0 && !editingRoom && (
-          <div style={{
-            position: 'absolute', top: '50%', left: '50%',
-            transform: 'translate(-50%, -50%)',
-            color: 'rgba(122, 74, 107, 0.6)',
-            fontSize: '0.85rem', textAlign: 'center', fontWeight: 600,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'
-          }}>
-            <div>{pet.name} 在外面玩耍～<br/>點「佈置」開始裝飾 ✨</div>
-            <button
-              onClick={callPetHome}
-              className="candy-btn"
-              style={{
-                padding: '8px 16px', borderRadius: '999px', border: 'none',
-                background: 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
-                color: 'white', fontWeight: 700, cursor: 'pointer',
-                fontSize: '0.8rem', fontFamily: 'inherit',
-                boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)'
-              }}
-            >📣 叫他回來</button>
-          </div>
-        )}
-        {!petVisible && pet.roomItems.length > 0 && !editingRoom && (
-          <div style={{
-            position: 'absolute', bottom: '15px', left: '50%',
-            transform: 'translateX(-50%)',
-            display: 'flex', alignItems: 'center', gap: '8px'
-          }}>
-            <span style={{
-              color: 'rgba(122, 74, 107, 0.5)',
-              fontSize: '0.7rem', fontWeight: 600
-            }}>🌷 {pet.name} 出門了</span>
-            <button
-              onClick={callPetHome}
-              className="candy-btn"
-              style={{
-                padding: '4px 10px', borderRadius: '999px', border: 'none',
-                background: 'linear-gradient(135deg, #ffb3d9, #ff9ec7)',
-                color: 'white', fontWeight: 700, cursor: 'pointer',
-                fontSize: '0.7rem', fontFamily: 'inherit',
-                boxShadow: '0 2px 6px rgba(255, 158, 199, 0.4)'
-              }}
-            >📣 叫他回來</button>
-          </div>
-        )}
+        {/* Pet outside hints removed - room shows decorations regardless */}
       </div>
 
       {/* Status / interaction hint */}
