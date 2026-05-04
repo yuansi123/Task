@@ -642,6 +642,7 @@ export default function App() {
   const [newTaskName, setNewTaskName] = useState('');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
+  const [editingDate, setEditingDate] = useState(null); // null = today; otherwise editing past date
   const [showWeeklySummary, setShowWeeklySummary] = useState(false);
   const [weeklyData, setWeeklyData] = useState(null);
   const [confettiKey, setConfettiKey] = useState(0);
@@ -1046,18 +1047,19 @@ export default function App() {
       return { ...prev, [key]: updater(current) };
     });
   };
+  const activeDateKey = () => editingDate || todayKey();
   const toggleMood = (moodId) => {
-    const today = todayKey();
-    const diary = getDiary(today);
+    const key = activeDateKey();
+    const diary = getDiary(key);
     const wasSelected = diary.moods.includes(moodId);
-    updateDiary(today, d => ({ ...d, moods: wasSelected ? d.moods.filter(m => m !== moodId) : [...d.moods, moodId] }));
+    updateDiary(key, d => ({ ...d, moods: wasSelected ? d.moods.filter(m => m !== moodId) : [...d.moods, moodId] }));
     if (!wasSelected) playDingSound();
   };
   const toggleBody = (bodyId) => {
-    const today = todayKey();
-    const diary = getDiary(today);
+    const key = activeDateKey();
+    const diary = getDiary(key);
     const wasSelected = diary.body.includes(bodyId);
-    updateDiary(today, d => ({ ...d, body: wasSelected ? d.body.filter(b => b !== bodyId) : [...d.body, bodyId] }));
+    updateDiary(key, d => ({ ...d, body: wasSelected ? d.body.filter(b => b !== bodyId) : [...d.body, bodyId] }));
     if (!wasSelected) playDingSound();
   };
 
@@ -1585,9 +1587,11 @@ export default function App() {
 
         {view === 'diary' && (
           <DiaryView
-            diary={getDiary(todayKey())}
+            diary={getDiary(activeDateKey())}
             toggleMood={toggleMood} toggleBody={toggleBody}
-            updateDiary={updateDiary} todayKey={todayKey}
+            updateDiary={updateDiary}
+            activeDateKey={activeDateKey}
+            editingDate={editingDate} setEditingDate={setEditingDate}
             playDingSound={playDingSound}
           />
         )}
@@ -1599,6 +1603,8 @@ export default function App() {
             selectedDate={selectedDate} setSelectedDate={setSelectedDate}
             dateKey={dateKey}
             cycleStats={cycleStats}
+            setEditingDate={setEditingDate}
+            setView={setView}
           />
         )}
 
@@ -3156,7 +3162,7 @@ function TodayView({ tasks, todayChecks, completedToday, allDoneToday, toggleTas
   );
 }
 
-function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playDingSound }) {
+function DiaryView({ diary, toggleMood, toggleBody, updateDiary, activeDateKey, editingDate, setEditingDate, playDingSound }) {
   const [moodInput, setMoodInput] = useState('');
   const [bodyInput, setBodyInput] = useState('');
   const [textDraft, setTextDraft] = useState(diary.text || '');
@@ -3177,7 +3183,7 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
     if (!moodInput.trim()) return;
     const val = moodInput.trim();
     const emoji = detectMoodEmoji(val);
-    const today = todayKey();
+    const today = activeDateKey();
     updateDiary(today, d => ({
       ...d,
       moodsCustom: d.moodsCustom.some(c => customLabel(c) === val)
@@ -3187,14 +3193,14 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
     setMoodInput(''); playDingSound(); flashSaved('mood');
   };
   const removeMoodCustom = (val) => {
-    const today = todayKey();
+    const today = activeDateKey();
     updateDiary(today, d => ({ ...d, moodsCustom: d.moodsCustom.filter(c => customLabel(c) !== val) }));
   };
   const saveBodyCustom = () => {
     if (!bodyInput.trim()) return;
     const val = bodyInput.trim();
     const emoji = detectBodyEmoji(val);
-    const today = todayKey();
+    const today = activeDateKey();
     updateDiary(today, d => ({
       ...d,
       bodyCustom: d.bodyCustom.some(c => customLabel(c) === val)
@@ -3204,11 +3210,11 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
     setBodyInput(''); playDingSound(); flashSaved('body');
   };
   const removeBodyCustom = (val) => {
-    const today = todayKey();
+    const today = activeDateKey();
     updateDiary(today, d => ({ ...d, bodyCustom: d.bodyCustom.filter(c => customLabel(c) !== val) }));
   };
   const saveText = () => {
-    const today = todayKey();
+    const today = activeDateKey();
     updateDiary(today, d => ({ ...d, text: textDraft }));
     setTextSaved(true); playDingSound(); flashSaved('text');
   };
@@ -3241,8 +3247,37 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
 
   return (
     <div style={{ padding: '0 20px' }}>
+      {editingDate && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          padding: '12px 14px', marginBottom: '12px',
+          background: 'linear-gradient(135deg, #fff4e6, #ffe0ec)',
+          border: '2px solid #ffb3d9',
+          borderRadius: '16px',
+          fontSize: '0.85rem', color: '#7a4a6b', fontWeight: 600
+        }}>
+          <span style={{ fontSize: '1.2rem' }}>✏️</span>
+          <span style={{ flex: 1 }}>
+            正在補記 {(() => {
+              const [y, m, d] = editingDate.split('-').map(Number);
+              return `${m}/${d}`;
+            })()}
+          </span>
+          <button
+            onClick={() => setEditingDate(null)}
+            className="candy-btn"
+            style={{
+              padding: '6px 12px', borderRadius: '999px', border: 'none',
+              background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.78rem', fontFamily: 'inherit',
+              boxShadow: '0 2px 8px rgba(255, 158, 199, 0.4)'
+            }}
+          >回今天</button>
+        </div>
+      )}
       <div style={sectionStyle}>
-        <h3 style={sectionTitle}>💭 今天心情如何？</h3>
+        <h3 style={sectionTitle}>💭 {editingDate ? '當天' : '今天'}心情如何？</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
           {MOOD_OPTIONS.map(m => {
             const selected = diary.moods.includes(m.id);
@@ -3340,7 +3375,7 @@ function DiaryView({ diary, toggleMood, toggleBody, updateDiary, todayKey, playD
       </div>
 
       <div style={sectionStyle}>
-        <h3 style={sectionTitle}>📝 今天的日記</h3>
+        <h3 style={sectionTitle}>📝 {editingDate ? '當天' : '今天'}的日記</h3>
         <textarea
           value={textDraft}
           onChange={e => { setTextDraft(e.target.value); setTextSaved(false); }}
@@ -3567,7 +3602,7 @@ function PhaseInsights({ diaries, stats }) {
   );
 }
 
-function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, setSelectedDate, dateKey, cycleStats }) {
+function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, setSelectedDate, dateKey, cycleStats, setEditingDate, setView }) {
   const year = month.getFullYear();
   const m = month.getMonth();
   const firstDay = new Date(year, m, 1).getDay();
@@ -3791,8 +3826,24 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             </>
           )}
           {tasks.length === 0 && !selectedDiary && (
-            <p style={{ color: '#c089a3', margin: 0 }}>那天沒有紀錄 ☁️</p>
+            <p style={{ color: '#c089a3', margin: '0 0 14px' }}>那天沒有紀錄 ☁️</p>
           )}
+          <button
+            onClick={() => {
+              setEditingDate(dateKey(selectedDate));
+              setView('diary');
+            }}
+            className="candy-btn"
+            style={{
+              width: '100%', marginTop: '12px',
+              padding: '12px', borderRadius: '14px', border: 'none',
+              background: 'linear-gradient(135deg, #ffb3d9, #c4a3ff)',
+              color: 'white', fontWeight: 700, cursor: 'pointer',
+              fontSize: '0.88rem', fontFamily: 'inherit',
+              boxShadow: '0 4px 12px rgba(255, 158, 199, 0.4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
+            }}
+          >✏️ 補記 / 編輯這一天</button>
         </div>
       )}
     </div>
