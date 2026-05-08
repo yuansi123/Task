@@ -302,53 +302,82 @@ function daysBetween(d1, d2) {
 
 // Find all period start dates from diaries.
 // A "period start" is a day where 'period' is logged AND the day before is NOT.
-function findPeriodStarts(diaries) {
+// Group consecutive (or nearly-consecutive) period days into episodes.
+// A gap of up to 2 days between period-marked days still counts as the same period.
+// Returns array of { startKey, endKey, length } sorted by startKey ascending.
+function findPeriodEpisodes(diaries) {
   const periodDays = Object.keys(diaries)
     .filter(key => diaries[key]?.body?.includes('period'))
     .sort();
 
   if (periodDays.length === 0) return [];
 
-  const starts = [];
-  for (const day of periodDays) {
-    const date = parseDateKey(day);
-    const yesterday = new Date(date);
-    yesterday.setDate(date.getDate() - 1);
-    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-    if (!diaries[yesterdayKey]?.body?.includes('period')) {
-      starts.push(day);
+  const GAP_TOLERANCE = 2; // days
+
+  const episodes = [];
+  let currentStart = periodDays[0];
+  let currentEnd = periodDays[0];
+
+  for (let i = 1; i < periodDays.length; i++) {
+    const prev = parseDateKey(currentEnd);
+    const curr = parseDateKey(periodDays[i]);
+    const gap = daysBetween(prev, curr);
+    if (gap <= GAP_TOLERANCE + 1) {
+      // Same episode
+      currentEnd = periodDays[i];
+    } else {
+      // New episode
+      const startD = parseDateKey(currentStart);
+      const endD = parseDateKey(currentEnd);
+      episodes.push({
+        startKey: currentStart,
+        endKey: currentEnd,
+        length: daysBetween(startD, endD) + 1
+      });
+      currentStart = periodDays[i];
+      currentEnd = periodDays[i];
     }
   }
-  return starts;
-}
-
-// Find the length of each period (consecutive 'period' days)
-function findPeriodLengths(diaries) {
-  const starts = findPeriodStarts(diaries);
-  return starts.map(startKey => {
-    let count = 1;
-    let date = parseDateKey(startKey);
-    while (true) {
-      date.setDate(date.getDate() + 1);
-      const k = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      if (diaries[k]?.body?.includes('period')) count++;
-      else break;
-    }
-    return { startKey, length: count };
+  // Push the last episode
+  const startD = parseDateKey(currentStart);
+  const endD = parseDateKey(currentEnd);
+  episodes.push({
+    startKey: currentStart,
+    endKey: currentEnd,
+    length: daysBetween(startD, endD) + 1
   });
+
+  return episodes;
 }
 
-// Calculate cycle stats from period starts
-function calculateCycleStats(diaries, manualCycle) {
-  const starts = findPeriodStarts(diaries);
-  const lengths = findPeriodLengths(diaries);
+// Backwards-compat: returns array of start keys
+function findPeriodStarts(diaries) {
+  return findPeriodEpisodes(diaries).map(e => e.startKey);
+}
 
-  if (starts.length === 0) return null;
+function findPeriodLengths(diaries) {
+  return findPeriodEpisodes(diaries).map(e => ({ startKey: e.startKey, length: e.length }));
+}
 
-  const lastStart = starts[starts.length - 1];
-  const lastStartDate = parseDateKey(lastStart);
+// Calculate cycle stats. cycleSettings = { manualLastStart, manualCycle, manualPeriodLength }
+function calculateCycleStats(diaries, cycleSettings) {
+  const settings = cycleSettings || {};
+  const episodes = findPeriodEpisodes(diaries);
+  const starts = episodes.map(e => e.startKey);
+  const lengths = episodes.map(e => ({ startKey: e.startKey, length: e.length }));
 
-  // Cycle lengths between consecutive period starts
+  // If user manually set a "last period start" date, prefer it
+  let effectiveLastStart;
+  if (settings.manualLastStart) {
+    effectiveLastStart = settings.manualLastStart;
+  } else if (starts.length > 0) {
+    effectiveLastStart = starts[starts.length - 1];
+  } else {
+    return null; // No data and no manual setting
+  }
+  const lastStartDate = parseDateKey(effectiveLastStart);
+
+  // Cycle lengths from consecutive period episodes
   const cycleLengths = [];
   for (let i = 1; i < starts.length; i++) {
     const prev = parseDateKey(starts[i - 1]);
@@ -356,14 +385,17 @@ function calculateCycleStats(diaries, manualCycle) {
     cycleLengths.push(daysBetween(prev, curr));
   }
 
-  const avgCycle = manualCycle ||
+  // Avg cycle: prefer user setting, then computed avg, then 28
+  const avgCycle = settings.manualCycle ||
     (cycleLengths.length > 0
       ? Math.round(cycleLengths.reduce((s, n) => s + n, 0) / cycleLengths.length)
       : 28);
 
-  const avgPeriodLength = lengths.length > 0
-    ? Math.round(lengths.reduce((s, l) => s + l.length, 0) / lengths.length)
-    : 5;
+  // Avg period length: prefer user setting, then computed, then 5
+  const avgPeriodLength = settings.manualPeriodLength ||
+    (lengths.length > 0
+      ? Math.round(lengths.reduce((s, l) => s + l.length, 0) / lengths.length)
+      : 5);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -380,7 +412,6 @@ function calculateCycleStats(diaries, manualCycle) {
   let phase = 'unknown';
   let phaseLabel = '';
   let phaseEmoji = '';
-  // Currently in period? Check if today has period logged
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const isPeriodToday = diaries[todayKey]?.body?.includes('period');
 
@@ -388,7 +419,7 @@ function calculateCycleStats(diaries, manualCycle) {
     phase = 'period';
     phaseLabel = '月經期';
     phaseEmoji = '🩸';
-  } else if (daysSinceLastStart < avgPeriodLength) {
+  } else if (daysSinceLastStart >= 0 && daysSinceLastStart < avgPeriodLength) {
     phase = 'period';
     phaseLabel = '月經期';
     phaseEmoji = '🩸';
@@ -411,19 +442,16 @@ function calculateCycleStats(diaries, manualCycle) {
   }
 
   return {
-    starts,
-    lengths,
-    cycleLengths,
-    avgCycle,
-    avgPeriodLength,
-    lastStart,
+    starts, lengths, cycleLengths,
+    avgCycle, avgPeriodLength,
+    lastStart: effectiveLastStart,
     lastStartDate,
     daysSinceLastStart,
-    nextStart,
-    daysUntilNext,
+    nextStart, daysUntilNext,
     cycleDay: daysSinceLastStart + 1,
     phase, phaseLabel, phaseEmoji,
     isPeriodToday,
+    isManual: !!(settings.manualLastStart || settings.manualCycle || settings.manualPeriodLength),
   };
 }
 
@@ -667,6 +695,7 @@ export default function App() {
   const [shopFlash, setShopFlash] = useState(null);
   const [shopError, setShopError] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [cycleSettings, setCycleSettings] = useState({}); // { manualLastStart, manualCycle, manualPeriodLength }
 
   const [petLocation, setPetLocation] = useState('outdoor');
   const [petX, setPetX] = useState(40);
@@ -688,6 +717,7 @@ export default function App() {
     const t = storage.get('tasks'); if (t) setTasks(t);
     const h = storage.get('history'); if (h) setHistory(h);
     const d = storage.get('diaries'); if (d) setDiaries(d);
+    const cs = storage.get('cycleSettings'); if (cs) setCycleSettings(cs);
     const p = storage.get('pet');
     if (p) {
       setPet({
@@ -713,6 +743,7 @@ export default function App() {
   useEffect(() => { if (!loading) storage.set('history', history); }, [history, loading]);
   useEffect(() => { if (!loading) storage.set('diaries', diaries); }, [diaries, loading]);
   useEffect(() => { if (!loading && pet) storage.set('pet', pet); }, [pet, loading]);
+  useEffect(() => { if (!loading) storage.set('cycleSettings', cycleSettings); }, [cycleSettings, loading]);
 
   useEffect(() => {
     if (!pet || petTransition) return;
@@ -1161,12 +1192,13 @@ export default function App() {
 
   const exportBackup = () => {
     const data = {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       tasks: tasks,
       history: history,
       diaries: diaries,
       pet: pet,
+      cycleSettings: cycleSettings,
     };
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
@@ -1200,6 +1232,7 @@ export default function App() {
         if (data.history) setHistory(data.history);
         if (data.diaries) setDiaries(data.diaries);
         if (data.pet) setPet(data.pet);
+        if (data.cycleSettings) setCycleSettings(data.cycleSettings);
         playRewardSound();
         setTimeout(() => alert('✨ 備份已成功匯入！'), 100);
       } catch (err) {
@@ -1370,7 +1403,7 @@ export default function App() {
 
   const totalFruits = pet ? Object.values(pet.fruits).reduce((s, v) => s + v, 0) : 0;
   const todayFruitCount = pet && pet.dailyFruits.date === todayKey() ? pet.dailyFruits.count : 0;
-  const cycleStats = calculateCycleStats(diaries, null);
+  const cycleStats = calculateCycleStats(diaries, cycleSettings);
 
   return (
     <div style={{
@@ -1803,6 +1836,9 @@ export default function App() {
         <SettingsModal
           exportBackup={exportBackup}
           importBackup={importBackup}
+          cycleSettings={cycleSettings}
+          setCycleSettings={setCycleSettings}
+          cycleStats={cycleStats}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -2048,15 +2084,63 @@ function LetterModal({ letter, petName, onClose }) {
   );
 }
 
-function SettingsModal({ exportBackup, importBackup, onClose }) {
+function SettingsModal({ exportBackup, importBackup, cycleSettings, setCycleSettings, cycleStats, onClose }) {
   const fileInputRef = useRef(null);
+  const [editingLastStart, setEditingLastStart] = useState(false);
+  const [tmpLastStart, setTmpLastStart] = useState('');
+  const [tmpCycle, setTmpCycle] = useState(cycleSettings?.manualCycle || '');
+  const [tmpPeriodLen, setTmpPeriodLen] = useState(cycleSettings?.manualPeriodLength || '');
+
+  const formatDate = (key) => {
+    if (!key) return '';
+    const [y, m, d] = key.split('-').map(Number);
+    return `${y} 年 ${m} 月 ${d} 日`;
+  };
+
+  const todayKeyStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+
+  const setPeriodToday = () => {
+    setCycleSettings(s => ({ ...s, manualLastStart: todayKeyStr }));
+  };
+
+  const saveLastStart = () => {
+    if (tmpLastStart) {
+      setCycleSettings(s => ({ ...s, manualLastStart: tmpLastStart }));
+      setEditingLastStart(false);
+    }
+  };
+
+  const saveCycle = () => {
+    const n = parseInt(tmpCycle);
+    if (n >= 15 && n <= 60) {
+      setCycleSettings(s => ({ ...s, manualCycle: n }));
+    }
+  };
+
+  const savePeriodLen = () => {
+    const n = parseInt(tmpPeriodLen);
+    if (n >= 1 && n <= 14) {
+      setCycleSettings(s => ({ ...s, manualPeriodLength: n }));
+    }
+  };
+
+  const clearAllSettings = () => {
+    if (confirm('要清除手動設定嗎？預測會回到根據日記自動計算。')) {
+      setCycleSettings({});
+      setTmpCycle('');
+      setTmpPeriodLen('');
+    }
+  };
+
   return (
     <div
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0,
         background: 'rgba(122, 74, 107, 0.5)',
-        backdropFilter: 'blur(10px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '16px', zIndex: 220
       }}
@@ -2066,7 +2150,8 @@ function SettingsModal({ exportBackup, importBackup, onClose }) {
         style={{
           background: 'linear-gradient(135deg, #fff0f5, #fce4ff)',
           borderRadius: '24px', padding: '20px 18px 18px',
-          maxWidth: '380px', width: '100%',
+          maxWidth: '420px', width: '100%',
+          maxHeight: '90vh', overflowY: 'auto',
           border: '3px solid white',
           boxShadow: '0 20px 60px rgba(196, 77, 255, 0.4)',
           position: 'relative'
@@ -2078,7 +2163,8 @@ function SettingsModal({ exportBackup, importBackup, onClose }) {
             position: 'absolute', top: '12px', right: '12px',
             background: 'rgba(255, 255, 255, 0.8)', border: 'none',
             width: '30px', height: '30px', borderRadius: '50%',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 5
           }}
         ><X size={16} color="#a06b8a" /></button>
 
@@ -2089,6 +2175,182 @@ function SettingsModal({ exportBackup, importBackup, onClose }) {
             fontFamily: '"Fredoka", sans-serif',
             fontSize: '1.15rem', color: '#7a4a6b'
           }}>設定</h2>
+        </div>
+
+        {/* Period tracking section */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.5)',
+          borderRadius: '16px', padding: '14px 14px 12px',
+          marginBottom: '14px'
+        }}>
+          <h3 style={{
+            margin: '0 0 6px', color: '#7a4a6b',
+            fontFamily: '"Fredoka", sans-serif', fontSize: '0.95rem'
+          }}>🌸 月經追蹤設定</h3>
+          <p style={{
+            margin: '0 0 12px', color: '#a06b8a',
+            fontSize: '0.7rem', lineHeight: 1.5
+          }}>手動設定會優先於自動計算。可以解決日記補記造成的預測錯亂。</p>
+
+          {/* Last period start */}
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#5a3a4a', marginBottom: '4px' }}>
+              最近月經第一天
+            </div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              {!editingLastStart ? (
+                <>
+                  <div style={{
+                    flex: 1, minWidth: '140px',
+                    padding: '8px 12px', borderRadius: '10px',
+                    background: 'white', border: '2px solid #ffd1dc',
+                    fontSize: '0.82rem', color: '#5a3a4a', fontWeight: 600
+                  }}>
+                    {cycleSettings?.manualLastStart
+                      ? formatDate(cycleSettings.manualLastStart) + ' (手動)'
+                      : cycleStats
+                        ? formatDate(cycleStats.lastStart) + ' (自動)'
+                        : '尚無紀錄'}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setTmpLastStart(cycleSettings?.manualLastStart || cycleStats?.lastStart || todayKeyStr);
+                      setEditingLastStart(true);
+                    }}
+                    className="candy-btn"
+                    style={{
+                      padding: '8px 12px', borderRadius: '10px', border: '2px solid #ffd1dc',
+                      background: 'white', color: '#a06b8a', fontWeight: 700, cursor: 'pointer',
+                      fontSize: '0.78rem', fontFamily: 'inherit'
+                    }}
+                  >修改</button>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="date" value={tmpLastStart}
+                    onChange={e => setTmpLastStart(e.target.value)}
+                    max={todayKeyStr}
+                    style={{
+                      flex: 1, minWidth: '140px',
+                      padding: '8px 12px', borderRadius: '10px',
+                      border: '2px solid #ffd1dc', background: 'white',
+                      fontSize: '0.85rem', fontFamily: 'inherit', color: '#5a3a4a'
+                    }}
+                  />
+                  <button
+                    onClick={saveLastStart}
+                    className="candy-btn"
+                    style={{
+                      padding: '8px 12px', borderRadius: '10px', border: 'none',
+                      background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+                      color: 'white', fontWeight: 700, cursor: 'pointer',
+                      fontSize: '0.78rem', fontFamily: 'inherit'
+                    }}
+                  >存</button>
+                </>
+              )}
+            </div>
+            <button
+              onClick={setPeriodToday}
+              className="candy-btn"
+              style={{
+                width: '100%', marginTop: '6px',
+                padding: '8px 10px', borderRadius: '10px', border: '2px dashed #ffb3d9',
+                background: 'rgba(255, 240, 245, 0.7)', color: '#a04060',
+                fontWeight: 700, cursor: 'pointer',
+                fontSize: '0.78rem', fontFamily: 'inherit'
+              }}
+            >🩸 我的月經今天剛來</button>
+          </div>
+
+          {/* Cycle length */}
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#5a3a4a', marginBottom: '4px' }}>
+              週期長度（天）
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="number" min={15} max={60}
+                value={tmpCycle}
+                onChange={e => setTmpCycle(e.target.value)}
+                placeholder={cycleStats ? `${cycleStats.avgCycle} (自動)` : '28'}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px', borderRadius: '10px',
+                  border: '2px solid #ffd1dc', background: 'white',
+                  fontSize: '0.85rem', fontFamily: 'inherit', color: '#5a3a4a'
+                }}
+              />
+              <button
+                onClick={saveCycle}
+                className="candy-btn"
+                style={{
+                  padding: '8px 12px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+                  color: 'white', fontWeight: 700, cursor: 'pointer',
+                  fontSize: '0.78rem', fontFamily: 'inherit'
+                }}
+              >存</button>
+            </div>
+          </div>
+
+          {/* Period length */}
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#5a3a4a', marginBottom: '4px' }}>
+              月經持續天數
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="number" min={1} max={14}
+                value={tmpPeriodLen}
+                onChange={e => setTmpPeriodLen(e.target.value)}
+                placeholder={cycleStats ? `${cycleStats.avgPeriodLength} (自動)` : '5'}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px', borderRadius: '10px',
+                  border: '2px solid #ffd1dc', background: 'white',
+                  fontSize: '0.85rem', fontFamily: 'inherit', color: '#5a3a4a'
+                }}
+              />
+              <button
+                onClick={savePeriodLen}
+                className="candy-btn"
+                style={{
+                  padding: '8px 12px', borderRadius: '10px', border: 'none',
+                  background: 'linear-gradient(135deg, #ff9ec7, #c4a3ff)',
+                  color: 'white', fontWeight: 700, cursor: 'pointer',
+                  fontSize: '0.78rem', fontFamily: 'inherit'
+                }}
+              >存</button>
+            </div>
+          </div>
+
+          {/* Show prediction summary */}
+          {cycleStats && (
+            <div style={{
+              padding: '10px 12px',
+              background: 'linear-gradient(135deg, #fff4e6, #ffe0ec)',
+              borderRadius: '10px', fontSize: '0.78rem', color: '#7a4a6b',
+              lineHeight: 1.5, fontWeight: 600
+            }}>
+              預測下次：<strong>{formatDate(cycleStats.nextStart.toISOString().slice(0, 10))}</strong>
+              {cycleStats.daysUntilNext >= 0 ? `（${cycleStats.daysUntilNext} 天後）` : `（已晚 ${-cycleStats.daysUntilNext} 天）`}
+            </div>
+          )}
+
+          {(cycleSettings?.manualLastStart || cycleSettings?.manualCycle || cycleSettings?.manualPeriodLength) && (
+            <button
+              onClick={clearAllSettings}
+              style={{
+                width: '100%', marginTop: '8px',
+                padding: '6px 10px', borderRadius: '10px', border: 'none',
+                background: 'rgba(255, 200, 220, 0.4)', color: '#a04060',
+                fontWeight: 600, cursor: 'pointer',
+                fontSize: '0.72rem', fontFamily: 'inherit'
+              }}
+            >清除手動設定，回到自動</button>
+          )}
         </div>
 
         <h3 style={{
