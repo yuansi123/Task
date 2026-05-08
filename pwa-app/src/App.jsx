@@ -24,7 +24,8 @@ const MOOD_OPTIONS = [
 ];
 
 const BODY_OPTIONS = [
-  { id: 'period', emoji: '🩸', label: '月經', color: '#ff8a9b' },
+  { id: 'period_start', emoji: '🩸', label: '月經第一天', color: '#e63950' },
+  { id: 'period', emoji: '💧', label: '月經中', color: '#ff8a9b' },
   { id: 'headache', emoji: '🤕', label: '頭痛', color: '#d4a3a3' },
   { id: 'stomachache', emoji: '😣', label: '肚子痛', color: '#e8b8a0' },
   { id: 'nausea', emoji: '🤢', label: '想吐', color: '#a8d4a3' },
@@ -302,50 +303,104 @@ function daysBetween(d1, d2) {
 
 // Find all period start dates from diaries.
 // A "period start" is a day where 'period' is logged AND the day before is NOT.
-// Group consecutive (or nearly-consecutive) period days into episodes.
-// A gap of up to 2 days between period-marked days still counts as the same period.
-// Returns array of { startKey, endKey, length } sorted by startKey ascending.
+// Group period days into episodes.
+// New (v18+) logic: episodes start at any day with 'period_start' marker.
+// Episode includes the start day and any following consecutive (or near-consecutive,
+// gap <=2) days with 'period' or 'period_start' markers.
+// Legacy data (only 'period' marker, no 'period_start'): fall back to grouping by gap.
 function findPeriodEpisodes(diaries) {
-  const periodDays = Object.keys(diaries)
-    .filter(key => diaries[key]?.body?.includes('period'))
+  const allMarkedDays = Object.keys(diaries)
+    .filter(key => {
+      const body = diaries[key]?.body || [];
+      return body.includes('period') || body.includes('period_start');
+    })
     .sort();
 
-  if (periodDays.length === 0) return [];
+  if (allMarkedDays.length === 0) return [];
 
-  const GAP_TOLERANCE = 2; // days
+  const hasStartMarker = (key) => diaries[key]?.body?.includes('period_start');
+  const hasAnyPeriod = (key) => {
+    const body = diaries[key]?.body || [];
+    return body.includes('period') || body.includes('period_start');
+  };
 
+  // Check if any day has 'period_start' - decides modern vs legacy mode
+  const anyExplicitStart = allMarkedDays.some(d => hasStartMarker(d));
+
+  const GAP_TOLERANCE = 2;
   const episodes = [];
-  let currentStart = periodDays[0];
-  let currentEnd = periodDays[0];
 
-  for (let i = 1; i < periodDays.length; i++) {
-    const prev = parseDateKey(currentEnd);
-    const curr = parseDateKey(periodDays[i]);
-    const gap = daysBetween(prev, curr);
-    if (gap <= GAP_TOLERANCE + 1) {
-      // Same episode
-      currentEnd = periodDays[i];
-    } else {
-      // New episode
-      const startD = parseDateKey(currentStart);
-      const endD = parseDateKey(currentEnd);
+  if (anyExplicitStart) {
+    // Modern mode: start is wherever 'period_start' is marked.
+    // Walk through days; when we hit a period_start, begin new episode.
+    // Continue extending while consecutive (gap <= 2) days have any period marker.
+    let i = 0;
+    while (i < allMarkedDays.length) {
+      // Skip days that aren't period_start until we find one or run out
+      while (i < allMarkedDays.length && !hasStartMarker(allMarkedDays[i])) {
+        i++;
+      }
+      if (i >= allMarkedDays.length) break;
+
+      const startKey = allMarkedDays[i];
+      let endKey = startKey;
+
+      // Extend episode while consecutive days have period markers (and gap acceptable)
+      let j = i + 1;
+      while (j < allMarkedDays.length) {
+        const prev = parseDateKey(endKey);
+        const curr = parseDateKey(allMarkedDays[j]);
+        const gap = daysBetween(prev, curr);
+        // Stop if next day has period_start (means new episode)
+        if (hasStartMarker(allMarkedDays[j]) && gap > 0) break;
+        if (gap <= GAP_TOLERANCE + 1) {
+          endKey = allMarkedDays[j];
+          j++;
+        } else {
+          break;
+        }
+      }
+
+      const sd = parseDateKey(startKey);
+      const ed = parseDateKey(endKey);
       episodes.push({
-        startKey: currentStart,
-        endKey: currentEnd,
-        length: daysBetween(startD, endD) + 1
+        startKey,
+        endKey,
+        length: daysBetween(sd, ed) + 1
       });
-      currentStart = periodDays[i];
-      currentEnd = periodDays[i];
+      i = j;
     }
+  } else {
+    // Legacy mode (old data): no 'period_start' markers, group by gap only.
+    let currentStart = allMarkedDays[0];
+    let currentEnd = allMarkedDays[0];
+
+    for (let i = 1; i < allMarkedDays.length; i++) {
+      const prev = parseDateKey(currentEnd);
+      const curr = parseDateKey(allMarkedDays[i]);
+      const gap = daysBetween(prev, curr);
+      if (gap <= GAP_TOLERANCE + 1) {
+        currentEnd = allMarkedDays[i];
+      } else {
+        const sd = parseDateKey(currentStart);
+        const ed = parseDateKey(currentEnd);
+        episodes.push({
+          startKey: currentStart,
+          endKey: currentEnd,
+          length: daysBetween(sd, ed) + 1
+        });
+        currentStart = allMarkedDays[i];
+        currentEnd = allMarkedDays[i];
+      }
+    }
+    const sd = parseDateKey(currentStart);
+    const ed = parseDateKey(currentEnd);
+    episodes.push({
+      startKey: currentStart,
+      endKey: currentEnd,
+      length: daysBetween(sd, ed) + 1
+    });
   }
-  // Push the last episode
-  const startD = parseDateKey(currentStart);
-  const endD = parseDateKey(currentEnd);
-  episodes.push({
-    startKey: currentStart,
-    endKey: currentEnd,
-    length: daysBetween(startD, endD) + 1
-  });
 
   return episodes;
 }
@@ -413,7 +468,7 @@ function calculateCycleStats(diaries, cycleSettings) {
   let phaseLabel = '';
   let phaseEmoji = '';
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const isPeriodToday = diaries[todayKey]?.body?.includes('period');
+  const isPeriodToday = !!(diaries[todayKey]?.body?.includes('period') || diaries[todayKey]?.body?.includes('period_start'));
 
   if (isPeriodToday) {
     phase = 'period';
@@ -456,12 +511,13 @@ function calculateCycleStats(diaries, cycleSettings) {
 }
 
 // Get day type for calendar marking
-// Returns: 'period' | 'predicted-period' | 'ovulation' | 'pms' | null
+// Returns: 'period_start' | 'period' | 'predicted-period' | 'ovulation' | 'pms' | null
 function getDayType(date, diaries, stats) {
   if (!stats) return null;
   const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-  // Logged period takes priority
+  // Logged period takes priority - check start marker first for distinct color
+  if (diaries[key]?.body?.includes('period_start')) return 'period_start';
   if (diaries[key]?.body?.includes('period')) return 'period';
 
   const today = new Date();
@@ -524,7 +580,7 @@ function aggregateByPhase(diaries, stats) {
       buckets[phaseForDay].push({ type: 'mood', id: moodId });
     }
     for (const bodyId of (d.body || [])) {
-      if (bodyId === 'period') continue;
+      if (bodyId === 'period' || bodyId === 'period_start') continue;
       buckets[phaseForDay].push({ type: 'body', id: bodyId });
     }
   }
@@ -3932,7 +3988,8 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
 
             // Cycle dot color
             let cycleDot = null;
-            if (dayType === 'period') cycleDot = '#ff5577';
+            if (dayType === 'period_start') cycleDot = '#e63950';
+            else if (dayType === 'period') cycleDot = '#ff8aa3';
             else if (dayType === 'predicted-period') cycleDot = '#ffaabb';
             else if (dayType === 'ovulation') cycleDot = '#ffaa66';
             else if (dayType === 'pms') cycleDot = '#c489ff';
@@ -3978,8 +4035,12 @@ function CalendarView({ tasks, history, diaries, month, setMonth, selectedDate, 
             justifyContent: 'center'
           }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff5577' }} />
-              月經
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#e63950' }} />
+              月經第一天
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ff8aa3' }} />
+              月經中
             </span>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffaabb', boxShadow: '0 0 0 1.5px white' }} />
